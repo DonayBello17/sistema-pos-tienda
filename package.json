@@ -1,0 +1,14 @@
+{
+  "name": "pos-tienda-barrio",
+  "version": "1.0.0",
+  "description": "Sistema POS, Inventario PEPS, Semáforo de Caducidad y Facturación DIAN",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.9.7"
+  }
+}

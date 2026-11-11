@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión Comercial - Control de Ventas e Inventario</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- TOAST NOTIFICACIONES FLOTANTES -->
+  <div id="toast-container"></div>
+
+  <!-- SIDEBAR LATERAL -->
+  <aside>
+    <div>
+      <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-store"></i></div>
+        <div>
+          <h2 style="font-size: 0.92rem; font-weight: 800; letter-spacing: 0.5px; line-height: 1.2;">SISTEMA DE GESTIÓN COMERCIAL</h2>
+          <p style="font-size: 0.72rem; color: var(--primary); font-weight: 700; margin-top: 2px;">Control de Inventarios & Facturación</p>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <!-- Vistas Administrador -->
+        <button data-vista="dashboard" data-roles="Administrador" class="nav-btn active">
+          <i class="fa-solid fa-chart-pie" style="width: 20px;"></i>
+          <span>Panel de Control</span>
+        </button>
+
+        <!-- Vista Compartida (Punto de Cobro) -->
+        <button data-vista="pos" data-roles="Administrador,Cajero" class="nav-btn">
+          <i class="fa-solid fa-cash-register" style="width: 20px; color: var(--success);"></i>
+          <span>Punto de Cobro</span>
+        </button>
+
+        <!-- Vistas Administrador -->
+        <button data-vista="semaforo" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-calendar-check" style="width: 20px; color: var(--warning);"></i>
+          <span>Control de Vencimientos</span>
+        </button>
+        <button data-vista="kardex" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-clipboard-list" style="width: 20px; color: #38bdf8;"></i>
+          <span>Movimientos de Inventario</span>
+        </button>
+        <button data-vista="compras" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-truck-ramp-box" style="width: 20px; color: #c084fc;"></i>
+          <span>Recepción de Mercancía</span>
+        </button>
+
+        <!-- Módulo Devoluciones / Averías Compartido -->
+        <button data-vista="novedades" data-roles="Administrador,Cajero" class="nav-btn">
+          <i class="fa-solid fa-arrows-rotate" style="width: 20px; color: #38bdf8;"></i>
+          <span>Devoluciones / Averías</span>
+        </button>
+
+        <!-- Cierre y Cuadre de Caja Compartido -->
+        <button id="nav-btn-arqueo" data-roles="Administrador,Cajero" onclick="App.abrirArqueoCaja()" class="nav-btn">
+          <i class="fa-solid fa-vault" style="width: 20px; color: var(--warning);"></i>
+          <span>Cierre y Cuadre de Caja</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Panel de Usuario & Logout -->
+    <div class="user-box">
+      <div class="user-info">
+        <div class="avatar" id="user-avatar">US</div>
+        <div style="overflow: hidden;">
+          <p id="user-nombre" style="font-size: 0.85rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis;">Usuario</p>
+          <div style="display: flex; gap: 6px; align-items: center; margin-top: 2px;">
+            <p id="user-rol" style="font-size: 0.72rem; color: var(--text-muted);">Rol</p>
+            <span class="badge badge-success" style="padding: 1px 6px; font-size: 0.62rem;">ACTIVO</span>
+          </div>
+        </div>
+      </div>
+      <button onclick="App.cerrarSesion()" class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;" title="Cerrar Sesión">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main>
+    <header>
+      <div>
+        <h2 id="titulo-seccion" style="font-size: 1.2rem; font-weight: 800; letter-spacing: -0.01em;">Resumen General del Negocio</h2>
+        <p id="subtitulo-seccion" style="font-size: 0.78rem; color: var(--text-muted);">Métricas de Ventas, Inventario y Productos</p>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span class="badge badge-info" style="font-family: monospace;">
+          <i class="fa-solid fa-database"></i> sistema_pos_tienda
+        </span>
+        <button onclick="NovedadesView.abrirModal()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
+          <i class="fa-solid fa-arrows-rotate" style="color: #38bdf8;"></i> Devolución / Avería
+        </button>
+        <button onclick="App.abrirArqueoCaja()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
+          <i class="fa-solid fa-vault" style="color: var(--warning);"></i> Cierre y Cuadre de Caja
+        </button>
+        <button onclick="App.recargarTodo()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
+          <i class="fa-solid fa-rotate"></i> Actualizar
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ================= 1. VISTA PANEL DE CONTROL (DASHBOARD) ================= -->
+      <section id="vista-dashboard" style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Banner de alerta dinámica de caducidad -->
+        <div id="dashboard-alerta-vencidos" class="hidden"></div>
+
+        <!-- Tarjetas de Métricas (KPI Cards) -->
+        <div class="stats-grid">
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Ventas de Hoy</span>
+              <div class="stat-icon" style="background: rgba(16,185,129,0.15); color: var(--success);"><i class="fa-solid fa-dollar-sign"></i></div>
+            </div>
+            <div class="stat-val" id="stat-ventas">$ 0.00</div>
+            <div class="stat-desc">
+              <span id="stat-transacciones" style="color: var(--success); font-weight: bold;">0</span> facturas generadas hoy
+            </div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Costo Total del Inventario</span>
+              <div class="stat-icon" style="background: rgba(99,102,241,0.15); color: var(--primary);"><i class="fa-solid fa-boxes-stacked"></i></div>
+            </div>
+            <div class="stat-val" id="stat-inventario">$ 0.00</div>
+            <div class="stat-desc">
+              <span id="stat-unidades" style="color: var(--primary); font-weight: bold;">0</span> unidades activas en inventario
+            </div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Alertas de Caducidad</span>
+              <div class="stat-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+            <div class="stat-val" style="display: flex; gap: 14px; font-size: 1.05rem; align-items: center; margin-top: 16px;">
+              <span style="color: var(--danger);"><i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> <b id="stat-rojos">0</b> Caducados</span>
+              <span style="color: var(--warning);"><i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> <b id="stat-amarillos">0</b> Próximos a Vencer</span>
+              <span style="color: var(--success);"><i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> <b id="stat-verdes">0</b> En Fecha</span>
+            </div>
+            <div class="stat-desc">Seguimiento preventivo de vida útil</div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Pérdidas por Productos Descartados</span>
+              <div class="stat-icon" style="background: rgba(239,68,68,0.15); color: var(--danger);"><i class="fa-solid fa-trash-can"></i></div>
+            </div>
+            <div class="stat-val" id="stat-bajas" style="color: var(--danger);">$ 0.00</div>
+            <div class="stat-desc" style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+              <span><span id="stat-eventos-baja" style="color: var(--danger); font-weight: bold;">0 eventos</span> por caducidad o daño</span>
+              <button onclick="App.cambiarVista('novedades')" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Ver desglose detallado de mermas y novedades">
+                <i class="fa-solid fa-arrow-trend-down"></i> Ver Detalle
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Catálogo de Productos -->
+        <div class="table-container">
+          <div class="table-header" style="flex-wrap: wrap; gap: 14px;">
+            <div>
+              <h3 style="font-size: 1rem; font-weight: 700;">Catálogo de Productos & Precios</h3>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Precios base, tarifas de IVA aplicadas y estado preventivo de caducidad</p>
+            </div>
+            <!-- Buscador en Vivo & Botón Nuevo Producto -->
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <div style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.8rem;"></i>
+                <input type="text" id="catalogo-buscar" oninput="DashboardView.filtrarCatalogo()" placeholder="Buscar por nombre o código..." class="input-field" style="padding-left: 32px; width: 240px; font-size: 0.82rem;">
+              </div>
+              <button id="btn-nuevo-producto" onclick="DashboardView.abrirModalNuevoProducto()" class="btn btn-primary" style="padding: 8px 14px; font-size: 0.82rem; white-space: nowrap;">
+                <i class="fa-solid fa-plus"></i> + Nuevo Producto
+              </button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th>Precio Base</th>
+                  <th>Tarifa IVA</th>
+                  <th>Precio Final</th>
+                  <th>Stock Total</th>
+                  <th>Estado de Caducidad</th>
+                  <th style="text-align: center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-productos-body">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando catálogo...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. VISTA PUNTO DE COBRO (POS) ================= -->
+      <section id="vista-pos" class="hidden">
+        <div class="pos-layout">
+          <!-- Columna Izquierda: Buscador y Catálogo -->
+          <div>
+            <div class="pos-search-box">
+              <i class="fa-solid fa-barcode pos-search-icon"></i>
+              <input type="text" id="pos-buscar" oninput="PosView.filtrar()" placeholder="Buscar producto por nombre o escanear código de barras..." class="pos-search-input">
+            </div>
+            <div id="pos-grid-productos" class="products-grid"></div>
+          </div>
+
+          <!-- Columna Derecha: Ticket de Venta & Cobro -->
+          <div class="cart-box">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px;">
+                <div>
+                  <h3 style="font-size: 1.05rem; font-weight: 800;"><i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Ticket de Venta</h3>
+                  <span style="font-size: 0.72rem; color: var(--text-muted);">Control de despacho y facturación</span>
+                </div>
+                <button onclick="PosView.vaciarCarrito()" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem;">
+                  <i class="fa-solid fa-broom"></i> Limpiar
+                </button>
+              </div>
+
+              <!-- Selector de Cliente con Botón Nuevo Cliente -->
+              <div style="margin-top: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Cliente Adquiriente:</label>
+                  <button type="button" onclick="PosView.abrirModalNuevoCliente()" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem;">
+                    <i class="fa-solid fa-user-plus"></i> + Nuevo
+                  </button>
+                </div>
+                <select id="pos-cliente-select" class="input-field" style="font-size: 0.85rem;"></select>
+              </div>
+
+              <!-- Lista de Ítems en Carrito -->
+              <div id="pos-carrito-lista" class="cart-items">
+                <div style="text-align: center; color: var(--text-muted); padding: 50px 0; font-size: 0.85rem;">
+                  <i class="fa-solid fa-basket-shopping" style="font-size: 2.5rem; color: var(--border-light); margin-bottom: 12px; display: block;"></i>
+                  El ticket de venta está vacío.
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel de Liquidación y Cobro -->
+            <div>
+              <!-- Métodos de Pago -->
+              <div style="margin-bottom: 10px;">
+                <label style="font-size: 0.74rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Método de Pago:</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 6px;">
+                  <button type="button" class="btn btn-secondary btn-metodo active" data-metodo="Efectivo" onclick="PosView.cambiarMetodoPago('Efectivo')">
+                    <i class="fa-solid fa-money-bill-wave"></i> Efectivo
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-metodo" data-metodo="Tarjeta" onclick="PosView.cambiarMetodoPago('Tarjeta')">
+                    <i class="fa-solid fa-credit-card"></i> Tarjeta
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-metodo" data-metodo="Transferencia" onclick="PosView.cambiarMetodoPago('Transferencia')">
+                    <i class="fa-solid fa-mobile-screen"></i> Transf.
+                  </button>
+                </div>
+              </div>
+
+              <!-- Campo Paga con y Cambio (en Efectivo) -->
+              <div id="box-pago-efectivo" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                <div>
+                  <label style="font-size: 0.72rem; color: var(--text-muted);">Paga Con ($):</label>
+                  <input type="number" id="pos-paga-con" oninput="PosView.calcularLiquidacionFiscal(); PosView.renderCarrito();" placeholder="Monto recibido" class="input-field" style="padding: 6px 10px;">
+                </div>
+                <div>
+                  <label style="font-size: 0.72rem; color: var(--text-muted);">Cambio / Devuelta:</label>
+                  <div id="pos-cambio" style="font-size: 1.1rem; font-weight: 800; font-family: monospace; color: var(--text-muted); padding-top: 4px;">$ 0.00</div>
+                </div>
+              </div>
+
+              <!-- Desglose Tributario DIAN -->
+              <div class="tax-breakdown-box">
+                <div class="breakdown-row">
+                  <span>Subtotal Base:</span>
+                  <strong id="pos-subtotal">$ 0.00</strong>
+                </div>
+                <div class="breakdown-row">
+                  <span>Total IVA 19%:</span>
+                  <strong id="pos-iva19">$ 0.00</strong>
+                </div>
+                <div class="breakdown-row">
+                  <span>Total IVA 5%:</span>
+                  <strong id="pos-iva5">$ 0.00</strong>
+                </div>
+                <div class="breakdown-row">
+                  <span>Total Exento (0%):</span>
+                  <strong id="pos-exento">$ 0.00</strong>
+                </div>
+                <div class="breakdown-row" style="color: #f87171;">
+                  <span>Descuento aplicado:</span>
+                  <strong id="pos-descuento" style="color: #f87171;">-$ 0.00</strong>
+                </div>
+                <div class="breakdown-row total-row">
+                  <span>Total a Pagar:</span>
+                  <strong id="pos-total">$ 0.00</strong>
+                </div>
+              </div>
+
+              <button id="btn-pos-cobrar" onclick="PosView.procesarVenta()" class="btn btn-success" style="width: 100%; margin-top: 12px; padding: 14px; font-size: 1rem;">
+                <i class="fa-solid fa-check"></i> Confirmar y Cobrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. VISTA CONTROL DE VENCIMIENTOS ================= -->
+      <section id="vista-semaforo" class="hidden">
+        <div class="table-container">
+          <div class="table-header">
+            <div>
+              <h3 style="font-size: 1rem; font-weight: 700;">Control y Seguimiento de Vencimientos por Lote</h3>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Gestión preventiva de fechas de caducidad y descarte de productos</p>
+            </div>
+            <!-- Filtros Rápidos -->
+            <div class="filter-tabs">
+              <button class="filter-tab active" data-filtro="TODOS" onclick="SemaforoView.filtrar('TODOS')">Todos</button>
+              <button class="filter-tab" data-filtro="ROJO" onclick="SemaforoView.filtrar('ROJO')" style="color: var(--danger);">Caducados</button>
+              <button class="filter-tab" data-filtro="AMARILLO" onclick="SemaforoView.filtrar('AMARILLO')" style="color: var(--warning);">Próximos a Vencer (&le;30d)</button>
+              <button class="filter-tab" data-filtro="VERDE" onclick="SemaforoView.filtrar('VERDE')" style="color: var(--success);">En Fecha (&gt;30d)</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Lote</th>
+                  <th>Producto</th>
+                  <th>Disponible</th>
+                  <th>Costo Unit.</th>
+                  <th>Valor Lote</th>
+                  <th>Fecha Vencimiento</th>
+                  <th>Estado de Caducidad</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-lotes-body">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando registros...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. VISTA MOVIMIENTOS DE INVENTARIO ================= -->
+      <section id="vista-kardex" class="hidden">
+        <div class="table-container">
+          <div class="table-header" style="flex-wrap: wrap; gap: 14px;">
+            <div>
+              <h3 style="font-size: 1rem; font-weight: 700;">Registro Histórico de Movimientos de Inventario</h3>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Trazabilidad cronológica de entradas por compra, ventas y salidas por caducidad o daño</p>
+            </div>
+            <!-- Filtros Rápidos de Kardex -->
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+              <!-- Buscador Reactivo en Vivo -->
+              <div style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.75rem;"></i>
+                <input type="text" id="kardex-buscar" oninput="aplicarFiltrosKardex()" placeholder="Buscar producto, código o lote..." class="input-field" style="padding-left: 28px; width: 210px; font-size: 0.78rem;">
+              </div>
+
+              <!-- Selector Tipo de Movimiento -->
+              <select id="kardex-filtro-tipo" onchange="aplicarFiltrosKardex()" class="input-field" style="width: 195px; font-size: 0.78rem;">
+                <option value="">Todos los Movimientos</option>
+                <option value="Entrada por Compra">Entrada por Compra</option>
+                <option value="Salida por Venta PEPS">Salida por Venta PEPS</option>
+                <option value="Salida por Baja de Caducidad">Salida por Baja de Caducidad</option>
+                <option value="Salida por Daño">Salida por Daño</option>
+                <option value="Entrada por Devolución Cliente">Entrada por Devolución Cliente</option>
+              </select>
+
+              <!-- Selector Producto (Custom Dropdown con Buscador y Flechas) -->
+              <div class="custom-select-container" id="custom-select-kardex-producto-wrap" style="width: 220px;">
+                <input type="hidden" id="kardex-filtro-producto" value="">
+                <div class="custom-select-input-box" id="box-kardex-producto" onclick="toggleDropdownKardexProducto()" style="padding: 6px 12px; font-size: 0.78rem; border-radius: 8px;">
+                  <span id="label-kardex-producto" class="custom-select-label">Todos los Productos</span>
+                  <i class="fa-solid fa-chevron-down custom-select-arrow" id="arrow-kardex-producto"></i>
+                </div>
+                <div class="custom-select-dropdown hidden" id="dropdown-kardex-producto" style="width: 280px; z-index: 1000;">
+                  <div class="custom-select-search-wrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="search-kardex-producto" class="custom-select-search" placeholder="Buscar producto o código..." autocomplete="off" oninput="filtrarDropdownKardexProducto()">
+                  </div>
+                  <div class="custom-select-options" id="options-kardex-producto" style="max-height: 220px;"></div>
+                </div>
+              </div>
+
+              <!-- Rango de Fechas -->
+              <div style="display: flex; gap: 6px; align-items: center; background: var(--bg-main); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Desde:</span>
+                <input type="date" id="kardex-fecha-desde" onchange="aplicarFiltrosKardex()" oninput="aplicarFiltrosKardex()" class="input-field" style="width: 125px; padding: 4px 6px; font-size: 0.74rem;">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Hasta:</span>
+                <input type="date" id="kardex-fecha-hasta" onchange="aplicarFiltrosKardex()" oninput="aplicarFiltrosKardex()" class="input-field" style="width: 125px; padding: 4px 6px; font-size: 0.74rem;">
+              </div>
+
+              <!-- Botón Limpiar -->
+              <button onclick="limpiarFiltrosKardex()" class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.75rem;" title="Limpiar todos los filtros">
+                <i class="fa-solid fa-rotate-left"></i> Limpiar
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Producto</th>
+                  <th>Lote</th>
+                  <th>Tipo de Movimiento</th>
+                  <th>Cantidad</th>
+                  <th>Costo Unit.</th>
+                  <th>Costo Total</th>
+                  <th>Saldo Stock</th>
+                  <th>Observación / Responsable</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-kardex-body">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando movimientos...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5. VISTA RECEPCIÓN DE MERCANCÍA ================= -->
+      <section id="vista-compras" class="hidden">
+        <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px;">
+          <!-- Formulario de Entrada de Mercancía -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <h3 style="font-size: 1.05rem; font-weight: 700;">
+                <i class="fa-solid fa-truck-ramp-box" style="color: var(--primary);"></i> Recepción de Mercancía
+              </h3>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 20px;">
+              Ingreso formal de productos con asignación de lote, costo de adquisición y vencimiento.
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Proveedor:</label>
+                  <button type="button" onclick="ComprasView.abrirModalNuevoProveedor()" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem;">
+                    <i class="fa-solid fa-plus"></i> + Nuevo Proveedor
+                  </button>
+                </div>
+                <!-- Custom Dropdown con Buscador y Flechas: Proveedor -->
+                <div class="custom-select-container" id="custom-select-proveedor-wrap">
+                  <input type="hidden" id="compras-proveedor" value="">
+                  <div class="custom-select-input-box" id="box-proveedor" onclick="ComprasView.toggleDropdown('proveedor')">
+                    <span id="label-proveedor" class="custom-select-label placeholder">Seleccione un Proveedor...</span>
+                    <i class="fa-solid fa-chevron-down custom-select-arrow" id="arrow-proveedor"></i>
+                  </div>
+                  <div class="custom-select-dropdown hidden" id="dropdown-proveedor">
+                    <div class="custom-select-search-wrap">
+                      <i class="fa-solid fa-magnifying-glass"></i>
+                      <input type="text" id="search-proveedor" class="custom-select-search" placeholder="Filtrar por NIT o Razón Social..." autocomplete="off" oninput="ComprasView.filtrarDropdown('proveedor')" onkeydown="ComprasView.manejarTecladoDropdown(event, 'proveedor')">
+                    </div>
+                    <div class="custom-select-options" id="options-proveedor"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Producto:</label>
+                <!-- Custom Dropdown con Buscador y Flechas: Producto -->
+                <div class="custom-select-container" id="custom-select-producto-wrap" style="margin-top: 4px;">
+                  <input type="hidden" id="compras-producto" value="">
+                  <div class="custom-select-input-box" id="box-producto" onclick="ComprasView.toggleDropdown('producto')">
+                    <span id="label-producto" class="custom-select-label placeholder">Seleccione un Producto...</span>
+                    <i class="fa-solid fa-chevron-down custom-select-arrow" id="arrow-producto"></i>
+                  </div>
+                  <div class="custom-select-dropdown hidden" id="dropdown-producto">
+                    <div class="custom-select-search-wrap">
+                      <i class="fa-solid fa-magnifying-glass"></i>
+                      <input type="text" id="search-producto" class="custom-select-search" placeholder="Filtrar por nombre o código de barras..." autocomplete="off" oninput="ComprasView.filtrarDropdown('producto')" onkeydown="ComprasView.manejarTecladoDropdown(event, 'producto')">
+                    </div>
+                    <div class="custom-select-options" id="options-producto"></div>
+                  </div>
+                </div>
+                <!-- Badge Informativo de Último Costo -->
+                <div id="compras-badge-ultimo-costo" style="margin-top: 6px; display: none;"></div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                  <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Número de Lote:</label>
+                  <input type="text" id="compras-lote" class="input-field" style="margin-top: 4px;" placeholder="LOT-XXXX">
+                </div>
+                <div>
+                  <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Cantidad Recibida:</label>
+                  <input type="number" id="compras-cantidad" class="input-field" style="margin-top: 4px;" placeholder="Ej: 50" min="1">
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                  <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Costo Unit. Compra ($):</label>
+                  <input type="number" id="compras-costo" step="0.01" class="input-field" style="margin-top: 4px;" placeholder="Ej: 2500">
+                </div>
+                <div>
+                  <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Fecha de Vencimiento:</label>
+                  <input type="date" id="compras-vencimiento" class="input-field" style="margin-top: 4px;">
+                </div>
+              </div>
+
+              <button onclick="ComprasView.agregarItem()" class="btn btn-primary" style="margin-top: 10px;">
+                <i class="fa-solid fa-plus"></i> Agregar a Lista de Recepción
+              </button>
+            </div>
+          </div>
+
+          <!-- Tabla de Lotes a Recepcionar -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px;">
+                <div>
+                  <h3 style="font-size: 1rem; font-weight: 700;">Lotes por Ingresar al Inventario</h3>
+                  <p style="font-size: 0.74rem; color: var(--text-muted);">Se actualizará el stock disponible y los movimientos de entrada</p>
+                </div>
+              </div>
+
+              <div class="table-responsive" style="margin-top: 14px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Lote</th>
+                      <th>Cant.</th>
+                      <th>Costo Unit.</th>
+                      <th>Vencimiento</th>
+                      <th>Subtotal</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="compras-items-body">
+                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No se han agregado lotes a la recepción.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <span style="font-size: 0.9rem; color: var(--text-muted);">Total Inversión de Compra:</span>
+                <span id="compras-total-recepcion" style="font-size: 1.3rem; font-weight: 800; color: var(--success); font-family: monospace;">$ 0.00</span>
+              </div>
+              <button id="btn-compras-guardar" onclick="ComprasView.registrarRecepcion()" class="btn btn-success" style="width: 100%; padding: 14px; font-size: 1rem;">
+                <i class="fa-solid fa-truck-ramp-box"></i> Registrar Recepción en Inventario
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 6. VISTA DEVOLUCIONES / AVERÍAS ================= -->
+      <section id="vista-devoluciones" class="hidden" style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- KPI Cards de Dinero Perdido y Novedades -->
+        <div class="stats-grid">
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Dinero Perdido en Mercancía</span>
+              <div class="stat-icon" style="background: rgba(239,68,68,0.15); color: var(--danger);"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+            </div>
+            <div class="stat-val" id="stat-dinero-perdido" style="color: var(--danger);">$ 0,00</div>
+            <div class="stat-desc">Costo total acumulado en bajas y averías visibles</div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Total Novedades Registradas</span>
+              <div class="stat-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            </div>
+            <div class="stat-val" id="stat-total-novedades">0 novedades</div>
+            <div class="stat-desc">Devoluciones, caducidades y averías filtradas</div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Unidades Físicas Involucradas</span>
+              <div class="stat-icon" style="background: rgba(99,102,241,0.15); color: var(--primary);"><i class="fa-solid fa-boxes-packing"></i></div>
+            </div>
+            <div class="stat-val" id="stat-unidades-novedades">0 u.</div>
+            <div class="stat-desc">Volumen total de productos gestionados</div>
+          </div>
+        </div>
+
+        <!-- Tabla Detallada con Barra de Filtros -->
+        <div class="table-container">
+          <div class="table-header" style="flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div>
+                <h3 style="font-size: 1rem; font-weight: 700;">Historial de Devoluciones, Averías y Descarte de Inventario</h3>
+                <p style="font-size: 0.76rem; color: var(--text-muted);">Auditoría de reingresos de clientes, descarte por vencimiento y salidas por producto dañado</p>
+              </div>
+              <button onclick="NovedadesView.abrirModal()" class="btn btn-primary" style="padding: 8px 14px; font-size: 0.82rem; white-space: nowrap;">
+                <i class="fa-solid fa-plus"></i> + Registrar Novedad
+              </button>
+            </div>
+
+            <!-- Filtros Rápidos de Novedades -->
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; margin-top: 6px;">
+              <!-- Buscador Rápido de Texto -->
+              <div style="position: relative;">
+                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.75rem;"></i>
+                <input type="text" id="novedades-buscar" oninput="aplicarFiltrosNovedades()" placeholder="Buscar por producto, lote o motivo..." class="input-field" style="padding-left: 28px; width: 220px; font-size: 0.78rem;">
+              </div>
+
+              <!-- Selector Tipo de Novedad -->
+              <select id="novedades-filtro-tipo" onchange="aplicarFiltrosNovedades()" class="input-field" style="width: 230px; font-size: 0.78rem;">
+                <option value="">Todas las Novedades</option>
+                <option value="Entrada por Devolución Cliente">Devolución de Cliente (Buen Estado)</option>
+                <option value="Salida por Baja de Caducidad">Baja por Caducidad / Vencimiento</option>
+                <option value="Salida por Daño">Salida por Avería / Producto Dañado</option>
+              </select>
+
+              <!-- Selector Desplegable de Producto (Custom Dropdown con Buscador y Flechas) -->
+              <div class="custom-select-container" id="custom-select-novedades-producto-wrap" style="width: 220px;">
+                <input type="hidden" id="novedades-filtro-producto" value="">
+                <div class="custom-select-input-box" id="box-novedades-producto" onclick="toggleDropdownNovedadesProducto()" style="padding: 6px 12px; font-size: 0.78rem; border-radius: 8px;">
+                  <span id="label-novedades-producto" class="custom-select-label">Todos los Productos</span>
+                  <i class="fa-solid fa-chevron-down custom-select-arrow" id="arrow-novedades-producto"></i>
+                </div>
+                <div class="custom-select-dropdown hidden" id="dropdown-novedades-producto" style="width: 280px; z-index: 1000;">
+                  <div class="custom-select-search-wrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="search-novedades-producto" class="custom-select-search" placeholder="Buscar producto o código..." autocomplete="off" oninput="filtrarDropdownNovedadesProducto()">
+                  </div>
+                  <div class="custom-select-options" id="options-novedades-producto" style="max-height: 220px;"></div>
+                </div>
+              </div>
+
+              <!-- Rango de Fechas -->
+              <div style="display: flex; gap: 6px; align-items: center; background: var(--bg-main); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border);">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Desde:</span>
+                <input type="date" id="novedades-fecha-desde" onchange="aplicarFiltrosNovedades()" oninput="aplicarFiltrosNovedades()" class="input-field" style="width: 125px; padding: 4px 6px; font-size: 0.74rem;">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Hasta:</span>
+                <input type="date" id="novedades-fecha-hasta" onchange="aplicarFiltrosNovedades()" oninput="aplicarFiltrosNovedades()" class="input-field" style="width: 125px; padding: 4px 6px; font-size: 0.74rem;">
+              </div>
+
+              <!-- Botón Limpiar -->
+              <button onclick="limpiarFiltrosNovedades()" class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.75rem;" title="Limpiar todos los filtros">
+                <i class="fa-solid fa-rotate-left"></i> Limpiar
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Producto</th>
+                  <th>Lote</th>
+                  <th>Tipo de Novedad</th>
+                  <th>Cantidad</th>
+                  <th>Costo Unit.</th>
+                  <th>Dinero Perdido</th>
+                  <th>Motivo / Observación</th>
+                  <th>Responsable</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-novedades-body">
+                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando historial de novedades...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ================= MODAL: REGISTRAR / EDITAR PRODUCTO ================= -->
+  <div id="modal-producto" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          <i id="modal-producto-icono" class="fa-solid fa-boxes-stacked" style="color: var(--primary);"></i> <span id="modal-producto-titulo">Registrar Nuevo Producto</span>
+        </h3>
+        <button onclick="DashboardView.cerrarModalNuevoProducto()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="form-nuevo-producto" onsubmit="DashboardView.guardarProducto(event)">
+        <input type="hidden" id="prod-id" value="">
+        <input type="hidden" id="prod-costo-oculto" value="0">
+
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Código de Barras *</label>
+              <input type="text" id="prod-codigo" required class="input-field" placeholder="Ej: 7701234567890">
+            </div>
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Categoría *</label>
+                <button type="button" onclick="DashboardView.abrirModalNuevaCategoria()" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem;" title="Crear nueva categoría">
+                  <i class="fa-solid fa-plus"></i> + Nueva
+                </button>
+              </div>
+              <select id="prod-categoria" required class="input-field" onchange="DashboardView.manejarCambioCategoria(this)"></select>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Nombre del Producto *</label>
+            <input type="text" id="prod-nombre" required class="input-field" placeholder="Ej: Arroz Diana Premium 1000g">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Precio Base (Sin IVA) *</label>
+              <input type="number" id="prod-precio-base" required step="0.01" min="1" class="input-field" placeholder="Ej: 3500" oninput="DashboardView.calcularPrecioFinalReactivo()">
+            </div>
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Tarifa IVA *</label>
+              <select id="prod-iva" required class="input-field" onchange="DashboardView.calcularPrecioFinalReactivo()">
+                <option value="19">19% (General)</option>
+                <option value="5">5% (Reducido)</option>
+                <option value="0">0% (Exento)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- MÓDULO FINANCIERO REACTIVO: COSTO, MARGEN, GANANCIA Y PVP -->
+          <div style="background: rgba(17, 24, 39, 0.6); border: 1px solid var(--border); border-radius: 12px; padding: 14px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-calculator" style="color: var(--primary);"></i> Indicadores Financieros & Margen de Rentabilidad
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; text-align: center;">
+              <div style="background: var(--bg-main); padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase;">Costo Compra</div>
+                <div id="prod-costo-referencial" style="font-size: 0.95rem; font-weight: 800; color: #fff; font-family: monospace; margin-top: 2px;">$ 0.00</div>
+              </div>
+              <div style="background: var(--bg-main); padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase;">Ganancia Bruta</div>
+                <div id="prod-ganancia-bruta" style="font-size: 0.95rem; font-weight: 800; color: var(--success); font-family: monospace; margin-top: 2px;">$ 0.00</div>
+              </div>
+              <div style="background: var(--bg-main); padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase;">Margen Proyectado</div>
+                <div id="prod-margen-porcentaje" style="font-size: 0.95rem; font-weight: 800; color: var(--primary); font-family: monospace; margin-top: 2px;">0.0%</div>
+              </div>
+              <div style="background: var(--bg-main); padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase;">PVP Final (IVA)</div>
+                <div id="prod-precio-final-calc" style="font-size: 0.95rem; font-weight: 800; color: var(--success); font-family: monospace; margin-top: 2px;">$ 0.00</div>
+              </div>
+            </div>
+
+            <!-- Alerta Reactiva de Margen Negativo o Inviable -->
+            <div id="prod-alerta-margen-negativo" class="hidden" style="margin-top: 10px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.45); color: #fca5a5; padding: 10px 14px; border-radius: 8px; font-size: 0.78rem; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.1rem; color: var(--danger);"></i>
+              <span id="prod-alerta-texto">¡ALERTA FINANCIERA! El precio base está por debajo del costo de compra ($0.00).</span>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Stock Mínimo Preventivo</label>
+            <input type="number" id="prod-stock-minimo" value="5" min="1" class="input-field">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="DashboardView.cerrarModalNuevoProducto()" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-guardar-producto" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i> <span id="btn-guardar-producto-texto">Guardar Producto</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: NUEVA CATEGORÍA (SUB-MODAL FLUIDO) ================= -->
+  <div id="modal-categoria" class="modal-overlay hidden" style="z-index: 100;">
+    <div class="modal-content" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          <i class="fa-solid fa-tags" style="color: var(--primary);"></i> Nueva Categoría de Producto
+        </h3>
+        <button type="button" onclick="DashboardView.cerrarModalNuevaCategoria()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="form-nueva-categoria" onsubmit="DashboardView.guardarNuevaCategoria(event)">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Nombre de la Categoría *</label>
+            <input type="text" id="cat-nombre" required class="input-field" placeholder="Ej: Lácteos, Granos, Bebidas...">
+          </div>
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Descripción (Opcional)</label>
+            <textarea id="cat-descripcion" class="input-field" rows="2" style="resize: none;" placeholder="Breve descripción o uso de la categoría"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="DashboardView.cerrarModalNuevaCategoria()" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-guardar-categoria" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Categoría
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: NUEVO PROVEEDOR ================= -->
+  <div id="modal-proveedor" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          <i class="fa-solid fa-truck" style="color: var(--primary);"></i> Registrar Proveedor Rápido
+        </h3>
+        <button onclick="ComprasView.cerrarModalNuevoProveedor()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="form-nuevo-proveedor" onsubmit="ComprasView.guardarNuevoProveedor(event)">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">NIT / Identificación Fiscal *</label>
+            <input type="text" id="prov-nit" required class="input-field" placeholder="Ej: 900.123.456-7">
+          </div>
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Razón Social / Nombre Comercial *</label>
+            <input type="text" id="prov-razon" required class="input-field" placeholder="Ej: Distribuciones Andina SAS">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Teléfono</label>
+              <input type="text" id="prov-telefono" class="input-field" placeholder="Ej: 3101234567">
+            </div>
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Correo Electrónico</label>
+              <input type="email" id="prov-correo" class="input-field" placeholder="contacto@proveedor.com">
+            </div>
+          </div>
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Dirección</label>
+            <input type="text" id="prov-direccion" class="input-field" placeholder="Ej: Calle 45 # 22-10">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="ComprasView.cerrarModalNuevoProveedor()" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-guardar-proveedor" class="btn btn-primary">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Proveedor
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: NUEVO CLIENTE ================= -->
+  <div id="modal-cliente" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          <i class="fa-solid fa-user-plus" style="color: var(--success);"></i> Registrar Cliente Rápido
+        </h3>
+        <button onclick="PosView.cerrarModalNuevoCliente()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="form-nuevo-cliente" onsubmit="PosView.guardarNuevoCliente(event)">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Cédula / NIT *</label>
+            <input type="text" id="cli-nit" required class="input-field" placeholder="Ej: 1020304050">
+          </div>
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Nombre Completo / Razón Social *</label>
+            <input type="text" id="cli-nombre" required class="input-field" placeholder="Ej: Carlos Alberto Gómez">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Teléfono</label>
+              <input type="text" id="cli-telefono" class="input-field" placeholder="Ej: 3009876543">
+            </div>
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Correo Electrónico</label>
+              <input type="email" id="cli-correo" class="input-field" placeholder="cliente@correo.com">
+            </div>
+          </div>
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Dirección</label>
+            <input type="text" id="cli-direccion" class="input-field" placeholder="Ej: Cra 15 # 80-20">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="PosView.cerrarModalNuevoCliente()" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-guardar-cliente" class="btn btn-success">
+            <i class="fa-solid fa-floppy-disk"></i> Registrar y Seleccionar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: FACTURA / COMPROBANTE FISCAL ================= -->
+  <div id="modal-factura" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;"><i class="fa-solid fa-file-invoice" style="color: var(--primary);"></i> Comprobante de Venta</h3>
+        <button onclick="PosView.cerrarModalFactura()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <div class="modal-body" style="background: #e5e7eb; padding: 18px;">
+        <div id="factura-ticket-body" class="ticket-print-box"></div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="PosView.copiarCUFE()" class="btn btn-secondary">
+          <i class="fa-solid fa-copy"></i> Copiar CUFE
+        </button>
+        <button onclick="PosView.imprimirFactura()" class="btn btn-primary">
+          <i class="fa-solid fa-print"></i> Imprimir Tirilla
+        </button>
+        <button onclick="PosView.cerrarModalFactura()" class="btn btn-success">
+          <i class="fa-solid fa-check"></i> Nueva Venta
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: DESCARTE / BAJA POR CADUCIDAD O DAÑO ================= -->
+  <div id="modal-baja" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--danger);">
+          <i class="fa-solid fa-trash-can"></i> Descartar Producto por Caducidad o Daño
+        </h3>
+        <button onclick="SemaforoView.cerrarModalBaja()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="baja-info-lote"></div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Tipo de Salida de Inventario:</label>
+            <select id="baja-tipo-movimiento" class="input-field" style="margin-top: 4px;">
+              <option value="Salida por Baja de Caducidad">Salida por Baja de Caducidad</option>
+              <option value="Salida por Daño">Salida por Daño</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Cantidad a Descartar:</label>
+            <input type="number" id="baja-cantidad" class="input-field" style="margin-top: 4px;" min="1">
+          </div>
+
+          <div>
+            <label style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Motivo / Justificación:</label>
+            <textarea id="baja-motivo" class="input-field" rows="2" style="margin-top: 4px; resize: none;"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="SemaforoView.cerrarModalBaja()" class="btn btn-secondary">Cancelar</button>
+        <button onclick="SemaforoView.confirmarBaja()" class="btn btn-danger">
+          <i class="fa-solid fa-triangle-exclamation"></i> Confirmar Salida de Inventario
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: CIERRE Y CUADRE DE CAJA ================= -->
+  <div id="modal-arqueo" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          <i class="fa-solid fa-vault" style="color: var(--warning);"></i> Cierre y Cuadre de Caja del Turno
+        </h3>
+        <button onclick="App.cerrarArqueoCaja()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <div class="modal-body" id="arqueo-body">
+        <p style="text-align: center; color: var(--text-muted);">Consultando movimientos del turno...</p>
+      </div>
+      <div class="modal-footer">
+        <button onclick="App.imprimirArqueo()" class="btn btn-secondary"><i class="fa-solid fa-print"></i> Imprimir Corte</button>
+        <button onclick="App.cerrarArqueoCaja()" class="btn btn-primary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: NOVEDADES (DEVOLUCIÓN / AVERÍA) ================= -->
+  <div id="modal-novedades" class="modal-overlay hidden" style="z-index: 100;">
+    <div class="modal-content" style="max-width: 540px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.05rem; font-weight: 700;">
+          <i class="fa-solid fa-arrows-rotate" style="color: #38bdf8;"></i> Registrar Novedad de Inventario
+        </h3>
+        <button onclick="NovedadesView.cerrarModal()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">&times;</button>
+      </div>
+      <form id="form-novedades" onsubmit="NovedadesView.guardarNovedad(event)">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Producto *</label>
+            <div class="custom-select-container" id="custom-select-nov-modal-producto-wrap" style="margin-top: 4px;">
+              <input type="hidden" id="nov-producto" value="">
+              <div class="custom-select-input-box" id="box-nov-modal-producto" onclick="toggleDropdownNovModalProducto()">
+                <span id="label-nov-modal-producto" class="custom-select-label placeholder">Seleccione un Producto...</span>
+                <i class="fa-solid fa-chevron-down custom-select-arrow" id="arrow-nov-modal-producto"></i>
+              </div>
+              <div class="custom-select-dropdown hidden" id="dropdown-nov-modal-producto" style="z-index: 1100;">
+                <div class="custom-select-search-wrap">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="search-nov-modal-producto" class="custom-select-search" placeholder="Filtrar por nombre o código de barras..." autocomplete="off" oninput="filtrarDropdownNovModalProducto()">
+                </div>
+                <div class="custom-select-options" id="options-nov-modal-producto" style="max-height: 190px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Lote de Origen / Afectado *</label>
+            <select id="nov-lote" required class="input-field" onchange="NovedadesView.actualizarDetalleLote()"></select>
+            <div id="nov-info-lote"></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px;">
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Tipo de Novedad *</label>
+              <select id="nov-tipo" required class="input-field">
+                <option value="DEVOLUCION_BUEN_ESTADO">Reingreso a Inventario (Buen Estado)</option>
+                <option value="CAMBIO_AVERIA_DEFECTO">Baja por Avería/Defecto</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Cantidad *</label>
+              <input type="number" id="nov-cantidad" required min="1" class="input-field" placeholder="Ej: 1">
+            </div>
+          </div>
+
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Motivo / Justificación *</label>
+            <textarea id="nov-motivo" required class="input-field" rows="2" style="resize: none;" placeholder="Describa el motivo de la devolución o el defecto/avería"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" onclick="NovedadesView.cerrarModal()" class="btn btn-secondary">Cancelar</button>
+          <button type="submit" id="btn-guardar-novedad" class="btn btn-primary">
+            <i class="fa-solid fa-check"></i> Registrar Novedad
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TICKET TÉRMICO DE IMPRESIÓN EXCLUSIVA (ARQUEO DE CAJA) -->
+  <div id="ticket-arqueo-impresion"></div>
+
+  <!-- SCRIPTS MODULARES -->
+  <script src="js/app.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/pos.js"></script>
+  <script src="js/semaforo.js"></script>
+  <script src="js/kardex.js"></script>
+  <script src="js/compras.js"></script>
+  <script src="js/novedades.js"></script>
+  <script src="js/mermas.js"></script>
+</body>
+</html>
