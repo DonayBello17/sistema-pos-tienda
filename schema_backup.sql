@@ -112,16 +112,17 @@ CREATE TABLE `categorias` (
   `id_categoria` int NOT NULL AUTO_INCREMENT,
   `nombre_categoria` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
   `descripcion` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `margen_defecto` decimal(5,2) DEFAULT '30.00',
   PRIMARY KEY (`id_categoria`),
   UNIQUE KEY `nombre_categoria` (`nombre_categoria`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Volcado de datos para la tabla: `categorias` (4 registros)
-INSERT INTO `categorias` (`id_categoria`, `nombre_categoria`, `descripcion`) VALUES
-(1, 'Lácteos y Refrigerados', 'Productos perecederos de cadena de frío'),
-(2, 'Abarrotes y Despensa', 'Granos, aceites y alimentos procesados'),
-(3, 'Bebidas y Refrescos', 'Gaseosas, jugos y aguas'),
-(4, 'Categoría Test 1793838604876', 'Descripción de prueba');
+INSERT INTO `categorias` (`id_categoria`, `nombre_categoria`, `descripcion`, `margen_defecto`) VALUES
+(1, 'Lácteos y Refrigerados', 'Productos perecederos de cadena de frío', 30.00),
+(2, 'Abarrotes y Despensa', 'Granos, aceites y alimentos procesados', 30.00),
+(3, 'Bebidas y Refrescos', 'Gaseosas, jugos y aguas', 30.00),
+(4, 'Categoría Test 1793838604876', 'Descripción de prueba', 30.00);
 
 -- --------------------------------------------------------
 -- Estructura de tabla: `productos`
@@ -137,6 +138,7 @@ CREATE TABLE `productos` (
   `precio_venta_final` decimal(12,2) NOT NULL,
   `stock_total` int NOT NULL DEFAULT '0',
   `stock_minimo` int NOT NULL DEFAULT '5',
+  `margen_ganancia` decimal(5,2) DEFAULT '30.00',
   `estado` enum('Activo','Inactivo') COLLATE utf8mb4_unicode_ci DEFAULT 'Activo',
   PRIMARY KEY (`id_producto`),
   UNIQUE KEY `codigo_barras` (`codigo_barras`),
@@ -145,15 +147,15 @@ CREATE TABLE `productos` (
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Volcado de datos para la tabla: `productos` (8 registros)
-INSERT INTO `productos` (`id_producto`, `codigo_barras`, `nombre`, `id_categoria`, `precio_base`, `tarifa_iva`, `precio_venta_final`, `stock_total`, `stock_minimo`, `estado`) VALUES
-(1, '7701001', 'Leche Entera 1000ml', 1, '3500.00', '0', '3500.00', 45, 5, 'Activo'),
-(2, '7701002', 'Yogur Fresa 250ml', 1, '2800.00', '19', '3332.00', 22, 5, 'Activo'),
-(3, '7701003', 'Arroz Blanco 1000g', 2, '4000.00', '0', '4000.00', 60, 15, 'Activo'),
-(4, '7701004', 'Aceite Vegetal 900ml', 2, '8500.00', '19', '10115.00', 15, 5, 'Activo'),
-(5, '7701005', 'Café Tostado 500g', 2, '12000.00', '5', '12600.00', 25, 5, 'Activo'),
-(6, 'BAR-1793836851842', 'Producto PEPS Test 1793836851842', 1, '10000.00', '19', '11900.00', 13, 5, 'Activo'),
-(7, 'INACT-1793839926271', 'Producto Para Inactivar 1793839926271', 1, '5000.00', '19', '5950.00', 0, 2, 'Inactivo'),
-(8, '7727172', 'Platano Verde', 2, '1000.00', '0', '1000.00', 10, 10, 'Activo');
+INSERT INTO `productos` (`id_producto`, `codigo_barras`, `nombre`, `id_categoria`, `precio_base`, `tarifa_iva`, `precio_venta_final`, `stock_total`, `stock_minimo`, `margen_ganancia`, `estado`) VALUES
+(1, '7701001', 'Leche Entera 1000ml', 1, '3500.00', '0', '3500.00', 45, 5, 30.00, 'Activo'),
+(2, '7701002', 'Yogur Fresa 250ml', 1, '2800.00', '19', '3332.00', 22, 5, 30.00, 'Activo'),
+(3, '7701003', 'Arroz Blanco 1000g', 2, '4000.00', '0', '4000.00', 60, 15, 30.00, 'Activo'),
+(4, '7701004', 'Aceite Vegetal 900ml', 2, '8500.00', '19', '10115.00', 15, 5, 30.00, 'Activo'),
+(5, '7701005', 'Café Tostado 500g', 2, '12000.00', '5', '12600.00', 25, 5, 30.00, 'Activo'),
+(6, 'BAR-1793836851842', 'Producto PEPS Test 1793836851842', 1, '10000.00', '19', '11900.00', 13, 5, 30.00, 'Activo'),
+(7, 'INACT-1793839926271', 'Producto Para Inactivar 1793839926271', 1, '5000.00', '19', '5950.00', 0, 2, 30.00, 'Inactivo'),
+(8, '7727172', 'Platano Verde', 2, '1000.00', '0', '1000.00', 10, 10, 30.00, 'Activo');
 
 -- --------------------------------------------------------
 -- Estructura de tabla: `compras`

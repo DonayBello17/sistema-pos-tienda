@@ -60,7 +60,9 @@ class ComprasService {
 
       // Bloqueo pesimista del producto
       const [[prod]] = await conn.query(
-        `SELECT id_producto, nombre, stock_total FROM productos WHERE id_producto = ? FOR UPDATE`,
+        `SELECT id_producto, nombre, stock_total, precio_base, tarifa_iva, 
+                IFNULL(margen_ganancia, 30.00) AS margen_ganancia 
+         FROM productos WHERE id_producto = ? FOR UPDATE`,
         [item.id_producto]
       );
 
@@ -119,6 +121,27 @@ class ComprasService {
         [nuevoStockTotal, prod.id_producto]
       );
 
+      // 4.6. Regla de Margen Automático y Protección de Reposición (Anti-Pérdidas)
+      const margenProd = parseFloat(prod.margen_ganancia) || 30.00;
+      let tasaIva = 0;
+      if (String(prod.tarifa_iva) === '19') tasaIva = 0.19;
+      else if (String(prod.tarifa_iva) === '5') tasaIva = 0.05;
+
+      const precioBaseSugerido = Number((costo * (1 + (margenProd / 100))).toFixed(2));
+      const precioBaseActual = parseFloat(prod.precio_base) || 0;
+      let precioActualizado = false;
+
+      // Si el costo nuevo empuja un precio base mayor o si se solicita forzar precio
+      if (precioBaseSugerido > precioBaseActual || item.forzar_precio) {
+        const nuevoPrecioBase = precioBaseSugerido;
+        const nuevoPvp = Number((nuevoPrecioBase * (1 + tasaIva)).toFixed(2));
+        await conn.query(
+          `UPDATE productos SET precio_base = ?, precio_venta_final = ? WHERE id_producto = ?`,
+          [nuevoPrecioBase, nuevoPvp, prod.id_producto]
+        );
+        precioActualizado = true;
+      }
+
       lotesCreados.push({
         id_lote,
         id_producto: prod.id_producto,
@@ -127,7 +150,10 @@ class ComprasService {
         cantidad: cant,
         costo_unitario: costo,
         fecha_vencimiento: item.fecha_vencimiento,
-        stock_resultante: nuevoStockTotal
+        stock_resultante: nuevoStockTotal,
+        precio_actualizado: precioActualizado,
+        precio_base_anterior: precioBaseActual,
+        precio_base_nuevo: precioActualizado ? precioBaseSugerido : precioBaseActual
       });
     }
 

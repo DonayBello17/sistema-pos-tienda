@@ -31,6 +31,7 @@ app.get('/api/dashboard/metricas', DashboardController.obtenerMetricas);
 
 app.get('/api/productos', ProductosController.obtenerProductos);
 app.post('/api/productos', ProductosController.crearProducto);
+app.post('/api/productos/recalcular-precios', ProductosController.recalcularPreciosMasivo);
 app.put('/api/productos/:id', ProductosController.actualizarProducto);
 app.patch('/api/productos/:id/inactivar', ProductosController.inactivarProducto);
 

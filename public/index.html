@@ -182,12 +182,15 @@
               <h3 style="font-size: 1rem; font-weight: 700;">Catálogo de Productos & Precios</h3>
               <p style="font-size: 0.76rem; color: var(--text-muted);">Precios base, tarifas de IVA aplicadas y estado preventivo de caducidad</p>
             </div>
-            <!-- Buscador en Vivo & Botón Nuevo Producto -->
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <!-- Buscador en Vivo & Botones de Acción -->
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
               <div style="position: relative;">
                 <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 0.8rem;"></i>
-                <input type="text" id="catalogo-buscar" oninput="DashboardView.filtrarCatalogo()" placeholder="Buscar por nombre o código..." class="input-field" style="padding-left: 32px; width: 240px; font-size: 0.82rem;">
+                <input type="text" id="catalogo-buscar" oninput="DashboardView.filtrarCatalogo()" placeholder="Buscar por nombre o código..." class="input-field" style="padding-left: 32px; width: 220px; font-size: 0.82rem;">
               </div>
+              <button id="btn-recalcular-precios" onclick="DashboardView.recalcularPreciosMasivo()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem; white-space: nowrap;" title="Recalcula el precio de todos los productos según su margen y costo">
+                <i class="fa-solid fa-calculator"></i> Recalcular Precios por Margen
+              </button>
               <button id="btn-nuevo-producto" onclick="DashboardView.abrirModalNuevoProducto()" class="btn btn-primary" style="padding: 8px 14px; font-size: 0.82rem; white-space: nowrap;">
                 <i class="fa-solid fa-plus"></i> + Nuevo Producto
               </button>
@@ -200,6 +203,7 @@
                   <th>Código</th>
                   <th>Producto</th>
                   <th>Categoría</th>
+                  <th>% Margen</th>
                   <th>Precio Base</th>
                   <th>Tarifa IVA</th>
                   <th>Precio Final</th>
@@ -209,7 +213,7 @@
                 </tr>
               </thead>
               <tbody id="tabla-productos-body">
-                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando catálogo...</td></tr>
+                <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando catálogo...</td></tr>
               </tbody>
             </table>
           </div>
@@ -523,7 +527,7 @@
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div>
                   <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Costo Unit. Compra ($):</label>
-                  <input type="number" id="compras-costo" step="0.01" class="input-field" style="margin-top: 4px;" placeholder="Ej: 2500">
+                  <input type="number" id="compras-costo" step="0.01" class="input-field" style="margin-top: 4px;" placeholder="Ej: 2500" oninput="ComprasView.actualizarAvisoMargen()">
                 </div>
                 <div>
                   <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Fecha de Vencimiento:</label>
@@ -531,7 +535,17 @@
                 </div>
               </div>
 
-              <button onclick="ComprasView.agregarItem()" class="btn btn-primary" style="margin-top: 10px;">
+              <!-- Aviso Dinámico de Margen y Precio Base Sugerido -->
+              <div id="compras-info-margen" style="display: none;"></div>
+
+              <div style="margin-top: -4px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: var(--text-muted); cursor: pointer;">
+                  <input type="checkbox" id="compras-forzar-precio" style="accent-color: var(--primary);">
+                  <span>Forzar actualización de precio base aunque el nuevo costo sea menor</span>
+                </label>
+              </div>
+
+              <button onclick="ComprasView.agregarItem()" class="btn btn-primary" style="margin-top: 6px;">
                 <i class="fa-solid fa-plus"></i> Agregar a Lista de Recepción
               </button>
             </div>
@@ -733,10 +747,14 @@
             <input type="text" id="prod-nombre" required class="input-field" placeholder="Ej: Arroz Diana Premium 1000g">
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div>
+              <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">% Margen Ganancia *</label>
+              <input type="number" id="prod-margen" required step="0.5" min="0" value="30" class="input-field" placeholder="Ej: 30" oninput="DashboardView.calcularDesdeMargen()">
+            </div>
             <div>
               <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Precio Base (Sin IVA) *</label>
-              <input type="number" id="prod-precio-base" required step="0.01" min="1" class="input-field" placeholder="Ej: 3500" oninput="DashboardView.calcularPrecioFinalReactivo()">
+              <input type="number" id="prod-precio-base" required step="0.01" min="0.01" class="input-field" placeholder="Ej: 3500" oninput="DashboardView.calcularPrecioFinalReactivo()">
             </div>
             <div>
               <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Tarifa IVA *</label>
@@ -809,6 +827,10 @@
           <div>
             <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Nombre de la Categoría *</label>
             <input type="text" id="cat-nombre" required class="input-field" placeholder="Ej: Lácteos, Granos, Bebidas...">
+          </div>
+          <div>
+            <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">% Margen por Defecto</label>
+            <input type="number" id="cat-margen" step="0.5" min="0" value="30" class="input-field" placeholder="Ej: 30">
           </div>
           <div>
             <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Descripción (Opcional)</label>

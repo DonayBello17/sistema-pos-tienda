@@ -215,8 +215,9 @@ const ComprasView = {
         label.innerHTML = `<strong>${item.nombre}</strong> <span style="color: var(--text-muted); font-size: 0.78rem;">(Cód: ${item.codigo_barras})</span>`;
       }
 
-      // Visualización de último costo de compra
+      // Visualización de último costo de compra y margen sugerido
       this.actualizarBadgeUltimoCosto(item);
+      this.actualizarAvisoMargen();
     }
 
     this.cerrarDropdown(tipo);
@@ -237,7 +238,7 @@ const ComprasView = {
           <span style="color: #38bdf8; font-size: 0.78rem;">
             <i class="fa-solid fa-tag"></i> <strong>Último costo de compra:</strong> ${App.formatoMoneda(ultimoCosto)}
           </span>
-          <button type="button" onclick="document.getElementById('compras-costo').value = ${ultimoCosto}" style="background: none; border: none; color: #38bdf8; font-size: 0.74rem; text-decoration: underline; cursor: pointer;">
+          <button type="button" onclick="document.getElementById('compras-costo').value = ${ultimoCosto}; ComprasView.actualizarAvisoMargen();" style="background: none; border: none; color: #38bdf8; font-size: 0.74rem; text-decoration: underline; cursor: pointer;">
             Usar este costo
           </button>
         </div>
@@ -250,6 +251,68 @@ const ComprasView = {
       badge.innerHTML = `
         <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 6px 12px; color: var(--warning); font-size: 0.78rem;">
           <i class="fa-solid fa-circle-info"></i> <strong>Primer ingreso:</strong> Sin costo de compra previo registrado.
+        </div>
+      `;
+    }
+    this.actualizarAvisoMargen();
+  },
+
+  // Aviso dinámico: Margen del producto, nuevo precio base sugerido y PVP
+  actualizarAvisoMargen() {
+    const infoDiv = document.getElementById('compras-info-margen');
+    const inputProd = document.getElementById('compras-producto');
+    const inputCosto = document.getElementById('compras-costo');
+    if (!infoDiv) return;
+
+    const idProducto = parseInt(inputProd?.value || 0, 10);
+    const prod = this.productos.find(p => p.id_producto === idProducto);
+    const costo = parseFloat(inputCosto?.value || 0);
+
+    if (!prod || isNaN(costo) || costo <= 0) {
+      infoDiv.style.display = 'none';
+      infoDiv.innerHTML = '';
+      return;
+    }
+
+    const margen = parseFloat(prod.margen_ganancia) || 30.00;
+    let tasaIva = 0;
+    if (String(prod.tarifa_iva) === '19') tasaIva = 0.19;
+    else if (String(prod.tarifa_iva) === '5') tasaIva = 0.05;
+
+    const precioBaseSugerido = Number((costo * (1 + (margen / 100))).toFixed(2));
+    const pvpFinal = Number((precioBaseSugerido * (1 + tasaIva)).toFixed(2));
+    const precioBaseActual = parseFloat(prod.precio_base) || 0;
+
+    infoDiv.style.display = 'block';
+
+    if (precioBaseSugerido > precioBaseActual) {
+      infoDiv.innerHTML = `
+        <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 8px 12px; font-size: 0.77rem; color: #a7f3d0;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+            <span><i class="fa-solid fa-chart-line"></i> Margen configurado: <strong>${margen}%</strong></span>
+            <span style="color: var(--success); font-weight: 800;">PVP Sugerido: ${App.formatoMoneda(pvpFinal)}</span>
+          </div>
+          <div>
+            Nuevo Precio Base sugerido: <strong>${App.formatoMoneda(precioBaseSugerido)}</strong> (IVA ${prod.tarifa_iva}%).
+          </div>
+          <div style="margin-top: 4px; font-size: 0.73rem; color: #38bdf8;">
+            <i class="fa-solid fa-shield-halved"></i> <b>Protección Anti-Pérdidas activa:</b> El precio base se actualizará de ${App.formatoMoneda(precioBaseActual)} a ${App.formatoMoneda(precioBaseSugerido)}.
+          </div>
+        </div>
+      `;
+    } else {
+      infoDiv.innerHTML = `
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 8px 12px; font-size: 0.77rem; color: #bae6fd;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+            <span><i class="fa-solid fa-chart-line"></i> Margen configurado: <strong>${margen}%</strong></span>
+            <span style="font-weight: 800; color: #fff;">PVP con este costo: ${App.formatoMoneda(pvpFinal)}</span>
+          </div>
+          <div>
+            Precio Base con este lote: <strong>${App.formatoMoneda(precioBaseSugerido)}</strong>.
+          </div>
+          <div style="margin-top: 4px; font-size: 0.73rem; color: var(--text-muted);">
+            <i class="fa-solid fa-lock"></i> Se conservará el precio base actual (${App.formatoMoneda(precioBaseActual)}) para mayor rentabilidad, a menos que marques "Forzar actualización".
+          </div>
         </div>
       `;
     }
@@ -385,6 +448,7 @@ const ComprasView = {
     }
 
     const prod = this.productos.find(p => p.id_producto === id_producto);
+    const forzar_precio = Boolean(document.getElementById('compras-forzar-precio')?.checked);
 
     this.itemsRecepcion.push({
       id_producto,
@@ -393,6 +457,7 @@ const ComprasView = {
       cantidad,
       costo_unitario,
       fecha_vencimiento,
+      forzar_precio,
       subtotal: cantidad * costo_unitario
     });
 
@@ -400,6 +465,13 @@ const ComprasView = {
     if (inputCant) inputCant.value = '';
     if (inputCosto) inputCosto.value = '';
     if (inputVence) inputVence.value = '';
+    const checkForzar = document.getElementById('compras-forzar-precio');
+    if (checkForzar) checkForzar.checked = false;
+    const infoMargen = document.getElementById('compras-info-margen');
+    if (infoMargen) {
+      infoMargen.style.display = 'none';
+      infoMargen.innerHTML = '';
+    }
     this.generarNumeroLoteSugerido();
 
     this.renderTablaItems();
@@ -466,7 +538,8 @@ const ComprasView = {
         numero_lote: it.numero_lote,
         cantidad: it.cantidad,
         costo_unitario: it.costo_unitario,
-        fecha_vencimiento: it.fecha_vencimiento
+        fecha_vencimiento: it.fecha_vencimiento,
+        forzar_precio: Boolean(it.forzar_precio)
       }))
     };
 
@@ -512,8 +585,17 @@ const ComprasView = {
       const badgeCosto = document.getElementById('compras-badge-ultimo-costo');
       if (badgeCosto) badgeCosto.style.display = 'none';
 
-      // Refrescar catálogo en memoria
+      // Refrescar catálogo en memoria y vistas
       await this.cargarProductos();
+      if (data.data?.lotes?.some(l => l.precio_actualizado)) {
+        App.toast('Protección Anti-Pérdidas: Se actualizaron los precios comerciales de productos que ingresaron con costo superior.', 'info');
+      }
+      if (window.DashboardView && typeof window.DashboardView.cargar === 'function') {
+        window.DashboardView.cargar();
+      }
+      if (window.PosView && typeof window.PosView.cargar === 'function') {
+        window.PosView.cargar();
+      }
     } catch (err) {
       App.toast(err.message, 'danger');
     } finally {

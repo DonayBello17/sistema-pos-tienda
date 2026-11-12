@@ -4,6 +4,7 @@ const ProductosController = require('../controllers/productos.controller');
 
 router.get('/', ProductosController.obtenerProductos);
 router.post('/', ProductosController.crearProducto);
+router.post('/recalcular-precios', ProductosController.recalcularPreciosMasivo);
 router.put('/:id', ProductosController.actualizarProducto);
 router.patch('/:id/inactivar', ProductosController.inactivarProducto);
 router.get('/categorias', ProductosController.obtenerCategorias);

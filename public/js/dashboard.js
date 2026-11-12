@@ -126,6 +126,7 @@ const DashboardView = {
           <td><code style="color: var(--primary); font-weight: bold;">${p.codigo_barras}</code></td>
           <td><strong>${p.nombre}</strong></td>
           <td><span style="color: var(--text-muted);">${p.nombre_categoria || 'General'}</span></td>
+          <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 700;">${p.margen_ganancia || 30}%</span></td>
           <td>${App.formatoMoneda(p.precio_base)}</td>
           <td><span class="badge ${tarifaBadgeClass}">IVA ${p.tarifa_iva}%</span></td>
           <td style="font-weight: 700; color: var(--success);">${App.formatoMoneda(p.precio_venta_final)}</td>
@@ -223,6 +224,17 @@ const DashboardView = {
     if (select.value === '__CREAR_NUEVA__') {
       select.value = '';
       this.abrirModalNuevaCategoria();
+      return;
+    }
+
+    const catId = parseInt(select.value, 10);
+    const cat = this.categorias.find(c => c.id_categoria === catId);
+    if (cat && cat.margen_defecto !== undefined) {
+      const inputMargen = document.getElementById('prod-margen');
+      if (inputMargen) {
+        inputMargen.value = cat.margen_defecto;
+        this.calcularDesdeMargen();
+      }
     }
   },
 
@@ -232,6 +244,8 @@ const DashboardView = {
     if (!modal) return;
     const form = document.getElementById('form-nueva-categoria');
     if (form) form.reset();
+    const inputMargen = document.getElementById('cat-margen');
+    if (inputMargen) inputMargen.value = '30';
     modal.classList.remove('hidden');
     const inputNombre = document.getElementById('cat-nombre');
     if (inputNombre) inputNombre.focus();
@@ -247,6 +261,7 @@ const DashboardView = {
 
     const nombre = document.getElementById('cat-nombre').value.trim();
     const descripcion = document.getElementById('cat-descripcion').value.trim();
+    const margen = parseFloat(document.getElementById('cat-margen')?.value) || 30.00;
 
     if (!nombre) {
       App.toast('El nombre de la categoría es obligatorio.', 'warning');
@@ -263,7 +278,8 @@ const DashboardView = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nombre_categoria: nombre,
-          descripcion: descripcion || null
+          descripcion: descripcion || null,
+          margen_defecto: margen
         })
       });
 
@@ -277,6 +293,11 @@ const DashboardView = {
 
       // Recargar categorías y preseleccionar la nueva en el formulario de producto
       await this.cargarCategorias(data.data.id_categoria);
+      const inputMargenProd = document.getElementById('prod-margen');
+      if (inputMargenProd) {
+        inputMargenProd.value = margen;
+        this.calcularDesdeMargen();
+      }
     } catch (err) {
       App.toast(err.message, 'danger');
     } finally {
@@ -296,12 +317,14 @@ const DashboardView = {
 
     const inputId = document.getElementById('prod-id');
     const inputCostoOculto = document.getElementById('prod-costo-oculto');
+    const inputMargen = document.getElementById('prod-margen');
     const titulo = document.getElementById('modal-producto-titulo');
     const icono = document.getElementById('modal-producto-icono');
     const btnTexto = document.getElementById('btn-guardar-producto-texto');
 
     if (inputId) inputId.value = '';
     if (inputCostoOculto) inputCostoOculto.value = '0';
+    if (inputMargen) inputMargen.value = '30';
     if (titulo) titulo.textContent = 'Registrar Nuevo Producto';
     if (icono) icono.className = 'fa-solid fa-boxes-stacked';
     if (btnTexto) btnTexto.textContent = 'Guardar Producto';
@@ -328,6 +351,7 @@ const DashboardView = {
     const inputCodigo = document.getElementById('prod-codigo');
     const inputNombre = document.getElementById('prod-nombre');
     const selectCat = document.getElementById('prod-categoria');
+    const inputMargen = document.getElementById('prod-margen');
     const inputBase = document.getElementById('prod-precio-base');
     const selectIva = document.getElementById('prod-iva');
     const inputStockMin = document.getElementById('prod-stock-minimo');
@@ -340,6 +364,7 @@ const DashboardView = {
     if (inputId) inputId.value = prod.id_producto;
     if (inputCodigo) inputCodigo.value = prod.codigo_barras || '';
     if (inputNombre) inputNombre.value = prod.nombre || '';
+    if (inputMargen) inputMargen.value = prod.margen_ganancia || 30;
     if (inputBase) inputBase.value = prod.precio_base || '';
     if (selectIva) selectIva.value = String(prod.tarifa_iva || '19');
     if (inputStockMin) inputStockMin.value = prod.stock_minimo || 5;
@@ -367,6 +392,23 @@ const DashboardView = {
   cerrarModalNuevoProducto() {
     const modal = document.getElementById('modal-producto');
     if (modal) modal.classList.add('hidden');
+  },
+
+  // Cálculo de Precio Base sugerido a partir del % de Margen Deseado
+  calcularDesdeMargen() {
+    const inputMargen = document.getElementById('prod-margen');
+    const inputBase = document.getElementById('prod-precio-base');
+    const inputCostoOculto = document.getElementById('prod-costo-oculto');
+
+    const margen = parseFloat(inputMargen ? inputMargen.value : 30) || 0;
+    const costo = parseFloat(inputCostoOculto ? inputCostoOculto.value : 0) || 0;
+
+    if (costo > 0 && inputBase) {
+      const baseSugerido = Number((costo * (1 + (margen / 100))).toFixed(2));
+      inputBase.value = baseSugerido;
+    }
+
+    this.calcularPrecioFinalReactivo();
   },
 
   // Cálculo Reactivo en Tiempo Real de Indicadores Financieros (PVP, Ganancia, Margen %)
@@ -439,6 +481,7 @@ const DashboardView = {
     const codigo = document.getElementById('prod-codigo').value.trim();
     const nombre = document.getElementById('prod-nombre').value.trim();
     const id_categoria = document.getElementById('prod-categoria').value;
+    const margen_ganancia = parseFloat(document.getElementById('prod-margen')?.value) || 30.00;
     const precio_base = parseFloat(document.getElementById('prod-precio-base').value) || 0;
     const tarifa_iva = document.getElementById('prod-iva').value;
     const stock_minimo = parseInt(document.getElementById('prod-stock-minimo').value, 10) || 5;
@@ -464,6 +507,7 @@ const DashboardView = {
           codigo_barras: codigo,
           nombre,
           id_categoria: id_categoria ? parseInt(id_categoria, 10) : null,
+          margen_ganancia,
           precio_base,
           tarifa_iva,
           stock_minimo
@@ -480,12 +524,55 @@ const DashboardView = {
 
       // Recargar catálogo y métricas
       await this.cargar();
+      if (window.PosView && typeof window.PosView.cargar === 'function') {
+        await window.PosView.cargar();
+      }
     } catch (err) {
       App.toast(err.message, 'danger');
     } finally {
       btn.disabled = false;
       const btnTexto = document.getElementById('btn-guardar-producto-texto');
       btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> <span id="btn-guardar-producto-texto">${esEdicion ? 'Actualizar Producto' : 'Guardar Producto'}</span>`;
+    }
+  },
+
+  // Recálculo Masivo de Precios por Margen (Opción 2)
+  async recalcularPreciosMasivo() {
+    const confirmar = confirm(
+      "¿Deseas recalcular automáticamente los Precios Base y PVP de todos los productos activos?\n\nEl sistema aplicará la fórmula [Costo Mayor × (1 + % Margen / 100)] para garantizar que ningún producto se venda a pérdida."
+    );
+    if (!confirmar) return;
+
+    const btn = document.getElementById('btn-recalcular-precios');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Recalculando...';
+    }
+
+    try {
+      const res = await fetch('/api/productos/recalcular-precios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Error al recalcular precios');
+      }
+
+      App.toast(data.mensaje, 'success');
+      await this.cargar();
+      if (window.PosView && typeof window.PosView.cargar === 'function') {
+        await window.PosView.cargar();
+      }
+    } catch (err) {
+      App.toast(err.message, 'danger');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
     }
   },
 

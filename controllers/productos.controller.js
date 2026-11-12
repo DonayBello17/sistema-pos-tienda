@@ -17,7 +17,7 @@ class ProductosController {
   static async obtenerCategorias(req, res) {
     try {
       const [categorias] = await pool.query(
-        'SELECT id_categoria, nombre_categoria, descripcion FROM categorias ORDER BY nombre_categoria ASC'
+        'SELECT id_categoria, nombre_categoria, descripcion, IFNULL(margen_defecto, 30.00) AS margen_defecto FROM categorias ORDER BY nombre_categoria ASC'
       );
       res.json(categorias);
     } catch (err) {
@@ -26,7 +26,7 @@ class ProductosController {
   }
 
   static async crearCategoria(req, res) {
-    const { nombre_categoria, descripcion } = req.body;
+    const { nombre_categoria, descripcion, margen_defecto } = req.body;
 
     if (!nombre_categoria || !nombre_categoria.trim()) {
       return res.status(400).json({
@@ -36,6 +36,9 @@ class ProductosController {
     }
 
     const nombreLimpio = nombre_categoria.trim();
+    const margenVal = margen_defecto !== undefined && margen_defecto !== null && margen_defecto !== ''
+      ? Math.max(0, parseFloat(margen_defecto) || 30.00)
+      : 30.00;
 
     try {
       const [existentes] = await pool.query(
@@ -51,8 +54,8 @@ class ProductosController {
       }
 
       const [resultado] = await pool.query(
-        'INSERT INTO categorias (nombre_categoria, descripcion) VALUES (?, ?)',
-        [nombreLimpio, descripcion ? descripcion.trim() : null]
+        'INSERT INTO categorias (nombre_categoria, descripcion, margen_defecto) VALUES (?, ?, ?)',
+        [nombreLimpio, descripcion ? descripcion.trim() : null, margenVal]
       );
 
       res.status(201).json({
@@ -61,7 +64,8 @@ class ProductosController {
         data: {
           id_categoria: resultado.insertId,
           nombre_categoria: nombreLimpio,
-          descripcion: descripcion ? descripcion.trim() : null
+          descripcion: descripcion ? descripcion.trim() : null,
+          margen_defecto: margenVal
         }
       });
     } catch (err) {
@@ -73,7 +77,7 @@ class ProductosController {
   }
 
   static async crearProducto(req, res) {
-    const { codigo_barras, nombre, id_categoria, precio_base, tarifa_iva, stock_minimo = 5 } = req.body;
+    const { codigo_barras, nombre, id_categoria, precio_base, tarifa_iva, stock_minimo = 5, margen_ganancia } = req.body;
 
     if (!codigo_barras || !nombre || precio_base === undefined || !tarifa_iva) {
       return res.status(400).json({
@@ -107,6 +111,17 @@ class ProductosController {
     const sMinimo = parseInt(stock_minimo, 10) || 5;
 
     try {
+      // Determinar margen de ganancia (hereda de categoría si no se envía)
+      let margen = parseFloat(margen_ganancia);
+      if (isNaN(margen) || margen < 0) {
+        if (id_categoria) {
+          const [[cat]] = await pool.query('SELECT margen_defecto FROM categorias WHERE id_categoria = ?', [parseInt(id_categoria, 10)]);
+          margen = cat && cat.margen_defecto !== null ? parseFloat(cat.margen_defecto) : 30.00;
+        } else {
+          margen = 30.00;
+        }
+      }
+
       // Verificar si el código de barras ya existe
       const [existentes] = await pool.query(
         'SELECT id_producto FROM productos WHERE codigo_barras = ?',
@@ -122,8 +137,8 @@ class ProductosController {
 
       const [resultado] = await pool.query(
         `INSERT INTO productos 
-         (codigo_barras, nombre, id_categoria, precio_base, tarifa_iva, precio_venta_final, stock_total, stock_minimo, estado)
-         VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'Activo')`,
+         (codigo_barras, nombre, id_categoria, precio_base, tarifa_iva, precio_venta_final, stock_total, stock_minimo, margen_ganancia, estado)
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 'Activo')`,
         [
           codigo_barras.trim(),
           nombre.trim(),
@@ -131,7 +146,8 @@ class ProductosController {
           pBase,
           String(tarifa_iva),
           precioVentaFinal,
-          sMinimo
+          sMinimo,
+          Number(margen.toFixed(2))
         ]
       );
 
@@ -146,7 +162,8 @@ class ProductosController {
           tarifa_iva: String(tarifa_iva),
           precio_venta_final: precioVentaFinal,
           stock_total: 0,
-          stock_minimo: sMinimo
+          stock_minimo: sMinimo,
+          margen_ganancia: Number(margen.toFixed(2))
         }
       });
     } catch (err) {
@@ -256,7 +273,7 @@ class ProductosController {
       return res.status(400).json({ ok: false, error: 'Identificador de producto inválido.' });
     }
 
-    const { nombre, codigo_barras, id_categoria, precio_base, tarifa_iva, stock_minimo = 5 } = req.body;
+    const { nombre, codigo_barras, id_categoria, precio_base, tarifa_iva, stock_minimo = 5, margen_ganancia } = req.body;
 
     if (!nombre || !codigo_barras || precio_base === undefined || !tarifa_iva) {
       return res.status(400).json({
@@ -284,7 +301,7 @@ class ProductosController {
     try {
       // 1. Verificar existencia del producto
       const [[productoActual]] = await pool.query(
-        'SELECT id_producto, nombre, codigo_barras, precio_base FROM productos WHERE id_producto = ?',
+        'SELECT id_producto, nombre, codigo_barras, precio_base, margen_ganancia FROM productos WHERE id_producto = ?',
         [idProducto]
       );
 
@@ -292,7 +309,20 @@ class ProductosController {
         return res.status(404).json({ ok: false, error: 'Producto no encontrado.' });
       }
 
-      // 2. Verificar duplicado de código de barras
+      // 2. Determinar margen de ganancia
+      let margen = parseFloat(margen_ganancia);
+      if (isNaN(margen) || margen < 0) {
+        if (id_categoria) {
+          const [[cat]] = await pool.query('SELECT margen_defecto FROM categorias WHERE id_categoria = ?', [parseInt(id_categoria, 10)]);
+          margen = cat && cat.margen_defecto !== null ? parseFloat(cat.margen_defecto) : 30.00;
+        } else if (productoActual.margen_ganancia !== null) {
+          margen = parseFloat(productoActual.margen_ganancia);
+        } else {
+          margen = 30.00;
+        }
+      }
+
+      // 3. Verificar duplicado de código de barras
       const [duplicados] = await pool.query(
         'SELECT id_producto FROM productos WHERE codigo_barras = ? AND id_producto != ?',
         [codigo_barras.trim(), idProducto]
@@ -305,7 +335,7 @@ class ProductosController {
         });
       }
 
-      // 3. Regla Financiera: Validar contra costo de compra en lotes
+      // 4. Regla Financiera: Validar contra costo de compra en lotes
       const [[costoRow]] = await pool.query(
         `SELECT IFNULL((
            SELECT costo_unitario 
@@ -326,7 +356,7 @@ class ProductosController {
         });
       }
 
-      // 4. Calcular precio de venta final (PVP)
+      // 5. Calcular precio de venta final (PVP)
       let tasaIva = 0;
       if (String(tarifa_iva) === '19') tasaIva = 0.19;
       else if (String(tarifa_iva) === '5') tasaIva = 0.05;
@@ -334,10 +364,10 @@ class ProductosController {
       const precioVentaFinal = Number((pBase * (1 + tasaIva)).toFixed(2));
       const sMinimo = parseInt(stock_minimo, 10) || 5;
 
-      // 5. Asentar actualización
+      // 6. Asentar actualización
       await pool.query(
         `UPDATE productos 
-         SET nombre = ?, codigo_barras = ?, id_categoria = ?, precio_base = ?, tarifa_iva = ?, precio_venta_final = ?, stock_minimo = ?
+         SET nombre = ?, codigo_barras = ?, id_categoria = ?, precio_base = ?, tarifa_iva = ?, precio_venta_final = ?, stock_minimo = ?, margen_ganancia = ?
          WHERE id_producto = ?`,
         [
           nombre.trim(),
@@ -347,6 +377,7 @@ class ProductosController {
           String(tarifa_iva),
           precioVentaFinal,
           sMinimo,
+          Number(margen.toFixed(2)),
           idProducto
         ]
       );
@@ -362,6 +393,7 @@ class ProductosController {
           tarifa_iva: String(tarifa_iva),
           precio_venta_final: precioVentaFinal,
           stock_minimo: sMinimo,
+          margen_ganancia: Number(margen.toFixed(2)),
           costo_referencial: costoCompra
         }
       });
@@ -369,6 +401,96 @@ class ProductosController {
       res.status(500).json({
         ok: false,
         error: 'Error al actualizar producto: ' + err.message
+      });
+    }
+  }
+
+  /**
+   * Recálculo Masivo de Precios por Margen (Opción 2)
+   * Recalcula precio_base y precio_venta_final de todos los productos activos
+   * usando el costo de lote más alto disponible o último costo registrado
+   */
+  static async recalcularPreciosMasivo(req, res) {
+    try {
+      const [productos] = await pool.query(
+        `SELECT p.id_producto, p.nombre, p.precio_base, p.tarifa_iva, 
+                IFNULL(p.margen_ganancia, IFNULL(c.margen_defecto, 30.00)) AS margen_ganancia
+         FROM productos p
+         LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+         WHERE p.estado = 'Activo'`
+      );
+
+      let actualizados = 0;
+      const detalles = [];
+
+      for (const prod of productos) {
+        const margen = parseFloat(prod.margen_ganancia) || 30.00;
+
+        // 1. Buscar costo del lote disponible con mayor costo
+        const [[loteDisp]] = await pool.query(
+          `SELECT MAX(costo_unitario) AS max_costo 
+           FROM lotes 
+           WHERE id_producto = ? AND cantidad_disponible > 0`,
+          [prod.id_producto]
+        );
+
+        let costoRef = loteDisp?.max_costo ? parseFloat(loteDisp.max_costo) : null;
+
+        // 2. Si no hay lotes disponibles, buscar último costo de compra
+        if (!costoRef || costoRef <= 0) {
+          const [[ultimoLote]] = await pool.query(
+            `SELECT costo_unitario 
+             FROM lotes 
+             WHERE id_producto = ? 
+             ORDER BY fecha_ingreso DESC, id_lote DESC 
+             LIMIT 1`,
+            [prod.id_producto]
+          );
+          if (ultimoLote?.costo_unitario) {
+            costoRef = parseFloat(ultimoLote.costo_unitario);
+          }
+        }
+
+        if (costoRef && costoRef > 0) {
+          let tasaIva = 0;
+          if (String(prod.tarifa_iva) === '19') tasaIva = 0.19;
+          else if (String(prod.tarifa_iva) === '5') tasaIva = 0.05;
+
+          const nuevoPrecioBase = Number((costoRef * (1 + (margen / 100))).toFixed(2));
+          const nuevoPvp = Number((nuevoPrecioBase * (1 + tasaIva)).toFixed(2));
+
+          if (nuevoPrecioBase !== parseFloat(prod.precio_base)) {
+            await pool.query(
+              `UPDATE productos 
+               SET precio_base = ?, precio_venta_final = ? 
+               WHERE id_producto = ?`,
+              [nuevoPrecioBase, nuevoPvp, prod.id_producto]
+            );
+            actualizados++;
+            detalles.push({
+              id_producto: prod.id_producto,
+              nombre: prod.nombre,
+              costo_referencia: costoRef,
+              margen,
+              precio_base_anterior: parseFloat(prod.precio_base),
+              precio_base_nuevo: nuevoPrecioBase,
+              precio_venta_final: nuevoPvp
+            });
+          }
+        }
+      }
+
+      res.json({
+        ok: true,
+        mensaje: `Se recalcularon exitosamente los precios de ${actualizados} producto(s) según su margen de ganancia.`,
+        total_evaluados: productos.length,
+        actualizados,
+        detalles
+      });
+    } catch (err) {
+      res.status(500).json({
+        ok: false,
+        error: 'Error al recalcular precios masivamente: ' + err.message
       });
     }
   }
