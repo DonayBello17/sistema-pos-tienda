@@ -89,6 +89,48 @@ class VentasController {
     }
   }
 
+  static async obtenerVentas(req, res) {
+    try {
+      const [ventas] = await pool.query(
+        `SELECT vf.id_venta,
+                vf.numero_factura,
+                DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d %H:%i:%s') AS fecha_venta,
+                c.nombre_completo AS cliente_nombre,
+                c.cedula_nit AS cliente_nit,
+                u.nombre_completo AS cajero_nombre,
+                vf.subtotal_base AS total_venta,
+                vf.total_iva_19,
+                vf.total_iva_5,
+                vf.total_pagar,
+                vf.metodo_pago,
+                vf.tipo_comprobante,
+                IFNULL(SUM(dv.cantidad * dv.costo_unitario_compra), 0) AS costo_peps,
+                IFNULL(vf.subtotal_base - SUM(dv.cantidad * dv.costo_unitario_compra), 0) AS utilidad_neta
+         FROM ventas_facturas vf
+         JOIN clientes c ON vf.id_cliente = c.id_cliente
+         JOIN usuarios u ON vf.id_usuario = u.id_usuario
+         LEFT JOIN detalle_ventas dv ON vf.id_venta = dv.id_venta
+         GROUP BY vf.id_venta, vf.numero_factura, vf.fecha_venta, c.nombre_completo, c.cedula_nit, u.nombre_completo, vf.subtotal_base, vf.total_iva_19, vf.total_iva_5, vf.total_pagar, vf.metodo_pago, vf.tipo_comprobante
+         ORDER BY vf.fecha_venta DESC, vf.id_venta DESC`
+      );
+
+      res.json(ventas.map(v => {
+        const totalVenta = Number(v.total_venta || 0);
+        const costoPeps = Number(v.costo_peps || 0);
+        const utilidadNeta = Number(v.utilidad_neta || 0);
+        return {
+          ...v,
+          total_venta: totalVenta,
+          costo_peps: costoPeps,
+          utilidad_neta: utilidadNeta,
+          margen_porcentaje: costoPeps > 0 ? Number(((utilidadNeta / costoPeps) * 100).toFixed(2)) : 0
+        };
+      }));
+    } catch (err) {
+      res.status(500).json({ error: 'Error al consultar historial de ventas: ' + err.message });
+    }
+  }
+
   static async obtenerVentaPorId(req, res) {
     const { id } = req.params;
     try {
@@ -109,7 +151,9 @@ class VentasController {
       }
 
       const [items] = await pool.query(
-        `SELECT dv.*, p.nombre AS producto_nombre, p.codigo_barras, l.numero_lote
+        `SELECT dv.*, p.nombre AS producto_nombre, p.codigo_barras, l.numero_lote,
+                ROUND(dv.cantidad * dv.costo_unitario_compra, 2) AS costo_total_lote,
+                ROUND(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra), 2) AS utilidad_tramo
          FROM detalle_ventas dv
          JOIN productos p ON dv.id_producto = p.id_producto
          JOIN lotes l ON dv.id_lote = l.id_lote
@@ -117,9 +161,28 @@ class VentasController {
         [id]
       );
 
+      const itemsFormateados = items.map(it => ({
+        ...it,
+        costo_unitario_compra: Number(it.costo_unitario_compra || 0),
+        precio_unitario_base: Number(it.precio_unitario_base || 0),
+        subtotal_linea: Number(it.subtotal_linea || 0),
+        costo_total_lote: Number(it.costo_total_lote || 0),
+        utilidad_tramo: Number(it.utilidad_tramo || 0)
+      }));
+
+      const costo_peps = itemsFormateados.reduce((acc, it) => acc + it.costo_total_lote, 0);
+      const total_venta = Number(factura.subtotal_base || 0);
+      const utilidad_neta = Number((total_venta - costo_peps).toFixed(2));
+
       res.json({
-        factura,
-        items
+        factura: {
+          ...factura,
+          total_venta,
+          costo_peps: Number(costo_peps.toFixed(2)),
+          utilidad_neta,
+          margen_porcentaje: costo_peps > 0 ? Number(((utilidad_neta / costo_peps) * 100).toFixed(2)) : 0
+        },
+        items: itemsFormateados
       });
     } catch (err) {
       res.status(500).json({ error: 'Error al consultar factura: ' + err.message });

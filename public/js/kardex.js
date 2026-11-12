@@ -170,7 +170,7 @@ function renderTablaKardexFiltrada(lista) {
   if (!tbody) return;
 
   if (!lista || lista.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 35px;">No hay movimientos contables que coincidan con los filtros aplicados.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 35px;">No hay movimientos contables que coincidan con los filtros aplicados.</td></tr>`;
     return;
   }
 
@@ -178,6 +178,7 @@ function renderTablaKardexFiltrada(lista) {
 
   tbody.innerHTML = lista.map(m => {
     const esEntrada = m.tipo_movimiento && m.tipo_movimiento.startsWith('Entrada');
+    const esVenta = m.tipo_movimiento === 'Salida por Venta PEPS';
     const badgeTipo = esEntrada 
       ? `<span class="badge badge-success"><i class="fa-solid fa-arrow-down"></i> ${m.tipo_movimiento}</span>`
       : (m.tipo_movimiento && (m.tipo_movimiento.includes('Baja') || m.tipo_movimiento.includes('Daño'))
@@ -186,6 +187,32 @@ function renderTablaKardexFiltrada(lista) {
 
     const signo = esEntrada ? '+' : '-';
     const colorCant = esEntrada ? 'var(--success)' : 'var(--danger)';
+
+    // Cálculo y badge de Ganancia / Pérdida en salidas por venta
+    let ingresoVentaHtml = `<span style="color: var(--text-dim);">-</span>`;
+    let gananciaPerdidaHtml = `<span style="color: var(--text-dim);">-</span>`;
+
+    if (esVenta) {
+      const ingresoVenta = Number(m.total_venta || 0);
+      const costoPeps = Number(m.costo_total || 0);
+      const utilidad = Number(m.utilidad_neta !== null && m.utilidad_neta !== undefined ? m.utilidad_neta : (ingresoVenta - costoPeps));
+
+      ingresoVentaHtml = `<strong style="color: #fff; font-family: monospace;">${formatoMoneda(ingresoVenta)}</strong>`;
+
+      if (utilidad >= 0) {
+        gananciaPerdidaHtml = `
+          <span style="color: var(--success); font-weight: 800; font-size: 0.84rem; font-family: monospace; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-arrow-trend-up"></i> +${formatoMoneda(utilidad)} <small style="font-size: 0.72rem; opacity: 0.85;">Ganancia</small>
+          </span>
+        `;
+      } else {
+        gananciaPerdidaHtml = `
+          <span style="color: var(--danger); font-weight: 800; font-size: 0.84rem; font-family: monospace; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-arrow-trend-down"></i> -${formatoMoneda(Math.abs(utilidad))} <small style="font-size: 0.72rem; opacity: 0.85;">Pérdida</small>
+          </span>
+        `;
+      }
+    }
 
     return `
       <tr>
@@ -201,6 +228,8 @@ function renderTablaKardexFiltrada(lista) {
         </td>
         <td>${formatoMoneda(m.costo_unitario)}</td>
         <td style="font-weight: bold; color: #fff;">${formatoMoneda(m.costo_total)}</td>
+        <td>${ingresoVentaHtml}</td>
+        <td>${gananciaPerdidaHtml}</td>
         <td>
           <span style="font-weight: bold; background: rgba(55,65,81,0.5); padding: 3px 8px; border-radius: 6px;">
             ${m.saldo_stock_resultante !== undefined ? m.saldo_stock_resultante + ' u.' : '-'}

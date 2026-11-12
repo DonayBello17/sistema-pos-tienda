@@ -550,6 +550,62 @@ const PosView = {
         <span id="ticket-cufe-text" style="font-family: monospace;">${venta.cufe}</span>
       </div>
 
+      <!-- AUDITORÍA DE VALORACIÓN PEPS & RENTABILIDAD -->
+      <div style="margin-top: 12px; background: #f8fafc; border: 1px dashed #64748b; border-radius: 8px; padding: 10px; font-size: 0.74rem; text-align: left;">
+        <div style="font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">
+          <span><i class="fa-solid fa-chart-line"></i> Auditoría PEPS (FIFO)</span>
+          <span>Costo vs Venta</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+          <thead>
+            <tr style="color: #64748b; font-size: 0.7rem; border-bottom: 1px solid #e2e8f0;">
+              <th style="text-align: left; padding: 3px 0;">Lote / Prod</th>
+              <th style="text-align: center; padding: 3px 0;">Cant</th>
+              <th style="text-align: right; padding: 3px 0;">Costo Lote</th>
+              <th style="text-align: right; padding: 3px 0;">Venta Base</th>
+              <th style="text-align: right; padding: 3px 0;">Margen</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(venta.tramos || []).map(t => {
+              const costoLote = Number(t.costo_total_peps !== undefined ? t.costo_total_peps : (t.cantidad * (t.costo_unitario_compra || 0)));
+              const ventaBase = Number(t.subtotal || 0);
+              const gananciaPerdida = Number(t.utilidad_tramo !== undefined ? t.utilidad_tramo : (ventaBase - costoLote));
+              const esPositivo = gananciaPerdida >= 0;
+              const colorMargen = esPositivo ? '#15803d' : '#b91c1c';
+              const signo = esPositivo ? '+' : '-';
+              return `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 3px 0;"><b>${t.nombre}</b><br><small style="color: #64748b;">${t.lote}</small></td>
+                  <td style="text-align: center; padding: 3px 0;">${t.cantidad}</td>
+                  <td style="text-align: right; padding: 3px 0; font-family: monospace;">${App.formatoMoneda(costoLote)}</td>
+                  <td style="text-align: right; padding: 3px 0; font-family: monospace;">${App.formatoMoneda(ventaBase)}</td>
+                  <td style="text-align: right; padding: 3px 0; font-family: monospace; font-weight: bold; color: ${colorMargen};">
+                    ${signo}${App.formatoMoneda(Math.abs(gananciaPerdida))}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+        <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; display: flex; flex-direction: column; gap: 3px;">
+          <div style="display: flex; justify-content: space-between; color: #475569;">
+            <span>Costo Total Lotes PEPS:</span>
+            <b>${App.formatoMoneda(venta.costo_peps || (venta.tramos || []).reduce((acc, t) => acc + (t.costo_total_peps || t.cantidad * (t.costo_unitario_compra || 0)), 0))}</b>
+          </div>
+          <div style="display: flex; justify-content: space-between; color: #475569;">
+            <span>Ingreso Venta Base:</span>
+            <b>${App.formatoMoneda(venta.total_venta || venta.liquidacion.subtotal_base)}</b>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 800; border-top: 1px solid #cbd5e1; padding-top: 4px; margin-top: 2px;">
+            <span>UTILIDAD NETA REAL:</span>
+            <span style="color: ${(venta.utilidad_neta !== undefined ? venta.utilidad_neta : (venta.liquidacion.subtotal_base - (venta.costo_peps || 0))) >= 0 ? '#15803d' : '#b91c1c'};">
+              ${(venta.utilidad_neta || 0) >= 0 ? '+' : '-'}${App.formatoMoneda(Math.abs(venta.utilidad_neta || 0))} ${(venta.utilidad_neta || 0) >= 0 ? 'Ganancia' : 'Pérdida'}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div class="ticket-qr-container">
         <div id="ticket-qr-svg" style="background: #fff; padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
           <svg width="130" height="130" viewBox="0 0 100 100" fill="#000">

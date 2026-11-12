@@ -35,6 +35,23 @@ class InventarioService {
        WHERE tipo_movimiento IN ('Salida por Baja de Caducidad', 'Salida por Daño')`
     );
 
+    // Métricas Contables PEPS: Ingreso base real, costo histórico de lotes y utilidad neta
+    const [[utilidadPeps]] = await pool.query(
+      `SELECT IFNULL(SUM(dv.subtotal_linea), 0) AS total_venta_base,
+              IFNULL(SUM(dv.cantidad * dv.costo_unitario_compra), 0) AS costo_peps,
+              IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad_neta
+       FROM detalle_ventas dv`
+    );
+
+    const [[utilidadHoy]] = await pool.query(
+      `SELECT IFNULL(SUM(dv.subtotal_linea), 0) AS total_venta_base_hoy,
+              IFNULL(SUM(dv.cantidad * dv.costo_unitario_compra), 0) AS costo_peps_hoy,
+              IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad_neta_hoy
+       FROM detalle_ventas dv
+       JOIN ventas_facturas vf ON dv.id_venta = vf.id_venta
+       WHERE DATE(vf.fecha_venta) = CURDATE()`
+    );
+
     return {
       ventas_hoy: Number(ventasHoy.total_ventas),
       transacciones_hoy: Number(ventasHoy.num_transacciones),
@@ -46,7 +63,13 @@ class InventarioService {
         verdes: Number(semaforo.verdes || 0)
       },
       perdidas_bajas: Number(bajasKardex.perdidas_caducidad),
-      total_eventos_baja: Number(bajasKardex.total_eventos_baja)
+      total_eventos_baja: Number(bajasKardex.total_eventos_baja),
+      // Métricas PEPS
+      total_venta: Number(utilidadPeps.total_venta_base),
+      costo_peps: Number(utilidadPeps.costo_peps),
+      utilidad_neta: Number(utilidadPeps.utilidad_neta),
+      utilidad_hoy: Number(utilidadHoy.utilidad_neta_hoy),
+      costo_peps_hoy: Number(utilidadHoy.costo_peps_hoy)
     };
   }
 

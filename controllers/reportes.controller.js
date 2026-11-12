@@ -21,11 +21,25 @@ class ReportesController {
                km.costo_total,
                km.saldo_stock_resultante,
                km.motivo_observacion,
-               DATE_FORMAT(km.fecha_movimiento, '%Y-%m-%d %H:%i:%s') AS fecha
+               DATE_FORMAT(km.fecha_movimiento, '%Y-%m-%d %H:%i:%s') AS fecha,
+               CASE 
+                 WHEN km.tipo_movimiento = 'Salida por Venta PEPS' THEN IFNULL(dv.subtotal_linea, p.precio_base * km.cantidad)
+                 ELSE NULL 
+               END AS total_venta,
+               CASE 
+                 WHEN km.tipo_movimiento = 'Salida por Venta PEPS' THEN km.costo_total
+                 ELSE NULL 
+               END AS costo_peps,
+               CASE 
+                 WHEN km.tipo_movimiento = 'Salida por Venta PEPS' THEN ROUND(IFNULL(dv.subtotal_linea, p.precio_base * km.cantidad) - km.costo_total, 2)
+                 ELSE NULL 
+               END AS utilidad_neta
         FROM kardex_movimientos km
         JOIN productos p ON km.id_producto = p.id_producto
         JOIN lotes l ON km.id_lote = l.id_lote
         JOIN usuarios u ON km.id_usuario = u.id_usuario
+        LEFT JOIN ventas_facturas vf ON vf.numero_factura = TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(km.motivo_observacion, ' (', 1), 'Venta ', -1))
+        LEFT JOIN detalle_ventas dv ON dv.id_venta = vf.id_venta AND dv.id_lote = km.id_lote AND dv.id_producto = km.id_producto
         WHERE 1=1
       `;
       const params = [];

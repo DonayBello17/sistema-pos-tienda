@@ -44,6 +44,20 @@ const DashboardView = {
       if (elBajas) elBajas.textContent = App.formatoMoneda(data.perdidas_bajas || 0);
       if (elEventosBaja) elEventosBaja.textContent = (data.total_eventos_baja || 0) + ' eventos';
 
+      // 5. Utilidad / Ganancia Real (PEPS)
+      const elUtilidad = document.getElementById('stat-utilidad-peps');
+      const elVentasBase = document.getElementById('stat-ventas-base');
+      const elCostoPeps = document.getElementById('stat-costo-peps');
+      const utilidadNeta = Number(data.utilidad_neta || 0);
+
+      if (elUtilidad) {
+        const signo = utilidadNeta >= 0 ? '+' : '-';
+        const color = utilidadNeta >= 0 ? 'var(--success)' : 'var(--danger)';
+        elUtilidad.innerHTML = `<span style="color: ${color}; font-weight: 800;">${signo}${App.formatoMoneda(Math.abs(utilidadNeta))}</span>`;
+      }
+      if (elVentasBase) elVentasBase.textContent = App.formatoMoneda(data.total_venta || 0);
+      if (elCostoPeps) elCostoPeps.textContent = App.formatoMoneda(data.costo_peps || 0);
+
       // Alerta preventiva si hay lotes vencidos
       const elAlerta = document.getElementById('dashboard-alerta-vencidos');
       if (elAlerta) {

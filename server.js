@@ -82,6 +82,7 @@ app.post('/api/proveedores', ComprasController.crearProveedor);
 app.get('/api/compras/proveedores', ComprasController.obtenerProveedores);
 app.post('/api/compras/proveedores', ComprasController.crearProveedor);
 
+app.get('/api/ventas', VentasController.obtenerVentas);
 app.post('/api/ventas', VentasController.procesarVenta);
 app.get('/api/clientes', VentasController.obtenerClientes);
 app.post('/api/clientes', VentasController.crearCliente);

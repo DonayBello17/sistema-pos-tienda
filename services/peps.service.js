@@ -199,6 +199,7 @@ class PepsService {
         // 7.4. Calcular saldo contable resultante y asentar en Kardex PEPS
         stockActualProducto -= aDescontar;
         const costoTotalTramo = aDescontar * lote.costo_unitario;
+        const utilidadTramo = subtotalTramo - costoTotalTramo;
 
         await conn.query(
           `INSERT INTO kardex_movimientos 
@@ -221,9 +222,11 @@ class PepsService {
           nombre: prod.nombre,
           lote: lote.numero_lote,
           cantidad: aDescontar,
-          costo_unitario_compra: lote.costo_unitario,
-          precio_base: prod.precio_base,
-          subtotal: subtotalTramo
+          costo_unitario_compra: Number(lote.costo_unitario),
+          costo_total_peps: Number(costoTotalTramo.toFixed(2)),
+          precio_base: Number(prod.precio_base),
+          subtotal: Number(subtotalTramo.toFixed(2)),
+          utilidad_tramo: Number(utilidadTramo.toFixed(2))
         });
 
         restante -= aDescontar;
@@ -236,6 +239,10 @@ class PepsService {
       );
     }
 
+    const costoTotalPeps = tramosDetalleVenta.reduce((acc, t) => acc + t.costo_total_peps, 0);
+    const totalVentaBase = Number(liquidacionFiscal.subtotal_base || 0);
+    const utilidadNeta = Number((totalVentaBase - costoTotalPeps).toFixed(2));
+
     return {
       id_venta,
       numero_factura: numeroFactura,
@@ -247,6 +254,9 @@ class PepsService {
       liquidacion: liquidacionFiscal,
       cufe,
       qr_data: qrData,
+      total_venta: totalVentaBase,
+      costo_peps: Number(costoTotalPeps.toFixed(2)),
+      utilidad_neta: utilidadNeta,
       tramos: tramosDetalleVenta
     };
   }

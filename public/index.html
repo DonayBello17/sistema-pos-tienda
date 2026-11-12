@@ -151,6 +151,17 @@
 
           <div class="card-stat">
             <div class="card-stat-header">
+              <span>Utilidad Real (PEPS)</span>
+              <div class="stat-icon" style="background: rgba(16,185,129,0.15); color: var(--success);"><i class="fa-solid fa-chart-line"></i></div>
+            </div>
+            <div class="stat-val" id="stat-utilidad-peps" style="color: var(--success);">$ 0.00</div>
+            <div class="stat-desc">
+              Venta Base: <b id="stat-ventas-base" style="color: #fff;">$ 0.00</b> | Costo Lotes: <b id="stat-costo-peps" style="color: var(--warning);">$ 0.00</b>
+            </div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
               <span>Pérdidas por Productos Descartados</span>
               <div class="stat-icon" style="background: rgba(239,68,68,0.15); color: var(--danger);"><i class="fa-solid fa-trash-can"></i></div>
             </div>
@@ -423,13 +434,15 @@
                   <th>Tipo de Movimiento</th>
                   <th>Cantidad</th>
                   <th>Costo Unit.</th>
-                  <th>Costo Total</th>
+                  <th>Costo Lote (PEPS)</th>
+                  <th>Ingreso Venta</th>
+                  <th>Ganancia / Pérdida</th>
                   <th>Saldo Stock</th>
-                  <th>Observación / Responsable</th>
+                  <th>Detalle / Responsable</th>
                 </tr>
               </thead>
               <tbody id="tabla-kardex-body">
-                <tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando movimientos...</td></tr>
+                <tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando movimientos...</td></tr>
               </tbody>
             </table>
           </div>
