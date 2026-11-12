@@ -526,13 +526,18 @@
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                 <div>
+                  <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">% Margen Ganancia:</label>
+                  <input type="number" id="compras-margen" step="0.5" min="0" class="input-field" style="margin-top: 4px;" placeholder="Ej: 30" oninput="ComprasView.actualizarAvisoMargen()">
+                </div>
+                <div>
                   <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Costo Unit. Compra ($):</label>
                   <input type="number" id="compras-costo" step="0.01" class="input-field" style="margin-top: 4px;" placeholder="Ej: 2500" oninput="ComprasView.actualizarAvisoMargen()">
                 </div>
-                <div>
-                  <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Fecha de Vencimiento:</label>
-                  <input type="date" id="compras-vencimiento" class="input-field" style="margin-top: 4px;">
-                </div>
+              </div>
+
+              <div>
+                <label style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Fecha de Vencimiento:</label>
+                <input type="date" id="compras-vencimiento" class="input-field" style="margin-top: 4px;">
               </div>
 
               <!-- Aviso Dinámico de Margen y Precio Base Sugerido -->
@@ -568,6 +573,7 @@
                       <th>Producto</th>
                       <th>Lote</th>
                       <th>Cant.</th>
+                      <th>% Marg.</th>
                       <th>Costo Unit.</th>
                       <th>Vencimiento</th>
                       <th>Subtotal</th>
@@ -575,7 +581,7 @@
                     </tr>
                   </thead>
                   <tbody id="compras-items-body">
-                    <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No se han agregado lotes a la recepción.</td></tr>
+                    <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 25px;">No se han agregado lotes a la recepción.</td></tr>
                   </tbody>
                 </table>
               </div>

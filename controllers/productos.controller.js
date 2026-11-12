@@ -349,7 +349,25 @@ class ProductosController {
 
       const costoCompra = Number(costoRow?.ultimo_costo || 0);
 
-      if (costoCompra > 0 && pBase < costoCompra) {
+      // Si se solicita recalcular precio automáticamente en base al margen
+      let pBaseFinal = pBase;
+      if (req.body.recalcular_precio) {
+        const [[loteDisp]] = await pool.query(
+          `SELECT MAX(costo_unitario) AS max_costo 
+           FROM lotes 
+           WHERE id_producto = ? AND cantidad_disponible > 0`,
+          [idProducto]
+        );
+        let costoRef = loteDisp?.max_costo ? parseFloat(loteDisp.max_costo) : null;
+        if (!costoRef || costoRef <= 0) {
+          costoRef = costoCompra;
+        }
+        if (costoRef && costoRef > 0) {
+          pBaseFinal = Number((costoRef * (1 + (margen / 100))).toFixed(2));
+        }
+      }
+
+      if (costoCompra > 0 && pBaseFinal < costoCompra) {
         return res.status(400).json({
           ok: false,
           error: `El precio de venta no puede estar por debajo del costo de compra ($${costoCompra.toFixed(2)})`
@@ -361,7 +379,7 @@ class ProductosController {
       if (String(tarifa_iva) === '19') tasaIva = 0.19;
       else if (String(tarifa_iva) === '5') tasaIva = 0.05;
 
-      const precioVentaFinal = Number((pBase * (1 + tasaIva)).toFixed(2));
+      const precioVentaFinal = Number((pBaseFinal * (1 + tasaIva)).toFixed(2));
       const sMinimo = parseInt(stock_minimo, 10) || 5;
 
       // 6. Asentar actualización
@@ -373,7 +391,7 @@ class ProductosController {
           nombre.trim(),
           codigo_barras.trim(),
           id_categoria ? parseInt(id_categoria, 10) : null,
-          pBase,
+          pBaseFinal,
           String(tarifa_iva),
           precioVentaFinal,
           sMinimo,
@@ -389,7 +407,7 @@ class ProductosController {
           id_producto: idProducto,
           codigo_barras: codigo_barras.trim(),
           nombre: nombre.trim(),
-          precio_base: pBase,
+          precio_base: pBaseFinal,
           tarifa_iva: String(tarifa_iva),
           precio_venta_final: precioVentaFinal,
           stock_minimo: sMinimo,
@@ -401,6 +419,103 @@ class ProductosController {
       res.status(500).json({
         ok: false,
         error: 'Error al actualizar producto: ' + err.message
+      });
+    }
+  }
+
+  /**
+   * Ajuste individual y rápido de margen_ganancia (PATCH /api/productos/:id/margen)
+   * Recalcula automáticamente el precio_base en función del costo del lote más alto o último lote
+   */
+  static async actualizarMargenIndividual(req, res) {
+    const { id } = req.params;
+    const idProducto = parseInt(id, 10);
+
+    if (isNaN(idProducto) || idProducto <= 0) {
+      return res.status(400).json({ ok: false, error: 'Identificador de producto inválido.' });
+    }
+
+    const { margen_ganancia } = req.body;
+    const nuevoMargen = parseFloat(margen_ganancia);
+
+    if (isNaN(nuevoMargen) || nuevoMargen < 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'El porcentaje de margen de ganancia debe ser un número mayor o igual a 0.'
+      });
+    }
+
+    try {
+      // 1. Obtener producto actual
+      const [[producto]] = await pool.query(
+        'SELECT id_producto, nombre, precio_base, tarifa_iva, margen_ganancia FROM productos WHERE id_producto = ?',
+        [idProducto]
+      );
+
+      if (!producto) {
+        return res.status(404).json({ ok: false, error: 'Producto no encontrado.' });
+      }
+
+      // 2. Buscar costo de referencia: Lote disponible más alto o último lote histórico
+      const [[loteDisp]] = await pool.query(
+        `SELECT MAX(costo_unitario) AS max_costo 
+         FROM lotes 
+         WHERE id_producto = ? AND cantidad_disponible > 0`,
+        [idProducto]
+      );
+
+      let costoRef = loteDisp?.max_costo ? parseFloat(loteDisp.max_costo) : null;
+
+      if (!costoRef || costoRef <= 0) {
+        const [[ultimoLote]] = await pool.query(
+          `SELECT costo_unitario 
+           FROM lotes 
+           WHERE id_producto = ? 
+           ORDER BY fecha_ingreso DESC, id_lote DESC 
+           LIMIT 1`,
+          [idProducto]
+        );
+        if (ultimoLote?.costo_unitario) {
+          costoRef = parseFloat(ultimoLote.costo_unitario);
+        }
+      }
+
+      let tasaIva = 0;
+      if (String(producto.tarifa_iva) === '19') tasaIva = 0.19;
+      else if (String(producto.tarifa_iva) === '5') tasaIva = 0.05;
+
+      // 3. Recalcular precio_base y PVP si hay costo de referencia
+      let nuevoPrecioBase = parseFloat(producto.precio_base) || 0;
+      if (costoRef && costoRef > 0) {
+        nuevoPrecioBase = Number((costoRef * (1 + (nuevoMargen / 100))).toFixed(2));
+      }
+      const nuevoPvp = Number((nuevoPrecioBase * (1 + tasaIva)).toFixed(2));
+
+      // 4. Actualizar en base de datos
+      await pool.query(
+        `UPDATE productos 
+         SET margen_ganancia = ?, precio_base = ?, precio_venta_final = ? 
+         WHERE id_producto = ?`,
+        [Number(nuevoMargen.toFixed(2)), nuevoPrecioBase, nuevoPvp, idProducto]
+      );
+
+      res.json({
+        ok: true,
+        mensaje: `Margen de ganancia de "${producto.nombre}" actualizado a ${Number(nuevoMargen.toFixed(2))}% (Precio base: $${nuevoPrecioBase.toFixed(2)}).`,
+        data: {
+          id_producto: idProducto,
+          nombre: producto.nombre,
+          margen_ganancia: Number(nuevoMargen.toFixed(2)),
+          costo_referencial: costoRef || 0,
+          precio_base: nuevoPrecioBase,
+          tarifa_iva: producto.tarifa_iva,
+          precio_venta_final: nuevoPvp
+        }
+      });
+    } catch (err) {
+      res.status(500).json({
+        ok: false,
+        error: 'Error al actualizar margen del producto: ' + err.message
       });
     }
   }

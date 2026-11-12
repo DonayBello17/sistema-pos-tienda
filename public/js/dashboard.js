@@ -122,14 +122,24 @@ const DashboardView = {
       const nombreEscapado = (p.nombre || '').replace(/'/g, "\\'");
 
       return `
-        <tr>
+        <tr id="fila-producto-${p.id_producto}">
           <td><code style="color: var(--primary); font-weight: bold;">${p.codigo_barras}</code></td>
           <td><strong>${p.nombre}</strong></td>
           <td><span style="color: var(--text-muted);">${p.nombre_categoria || 'General'}</span></td>
-          <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 700;">${p.margen_ganancia || 30}%</span></td>
-          <td>${App.formatoMoneda(p.precio_base)}</td>
+          <td id="celda-margen-${p.id_producto}">
+            <button type="button" 
+                    id="btn-margen-${p.id_producto}"
+                    onclick="DashboardView.activarEdicionRapidaMargen(${p.id_producto}, ${p.margen_ganancia || 30})"
+                    class="badge" 
+                    style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" 
+                    title="Clic para editar rápidamente este margen y recalcular precio">
+              <span>${p.margen_ganancia || 30}%</span>
+              <i class="fa-solid fa-pen" style="font-size: 0.65rem; opacity: 0.7;"></i>
+            </button>
+          </td>
+          <td id="col-base-${p.id_producto}">${App.formatoMoneda(p.precio_base)}</td>
           <td><span class="badge ${tarifaBadgeClass}">IVA ${p.tarifa_iva}%</span></td>
-          <td style="font-weight: 700; color: var(--success);">${App.formatoMoneda(p.precio_venta_final)}</td>
+          <td id="col-final-${p.id_producto}" style="font-weight: 700; color: var(--success);">${App.formatoMoneda(p.precio_venta_final)}</td>
           <td>
             <span style="font-weight: bold; ${p.stock_total <= p.stock_minimo ? 'color: var(--danger);' : ''}">
               ${p.stock_total} u.
@@ -153,6 +163,129 @@ const DashboardView = {
         </tr>
       `;
     }).join('');
+  },
+
+  // Edición Rápida de Margen de Ganancia directamente en la tabla
+  activarEdicionRapidaMargen(id_producto, margenActual) {
+    const celda = document.getElementById(`celda-margen-${id_producto}`);
+    if (!celda) return;
+
+    celda.innerHTML = `
+      <div style="display: inline-flex; align-items: center; gap: 4px;">
+        <input type="number" 
+               id="input-margen-rapido-${id_producto}" 
+               step="0.5" 
+               min="0" 
+               value="${margenActual}" 
+               style="width: 58px; padding: 3px 5px; font-size: 0.78rem; font-weight: 700; background: var(--bg-main); color: #38bdf8; border: 1px solid var(--primary); border-radius: 6px; outline: none; text-align: center;"
+               onkeydown="DashboardView.teclaMargenRapido(event, ${id_producto}, ${margenActual})">
+        <button type="button" 
+                onclick="DashboardView.guardarMargenRapido(${id_producto})" 
+                class="btn btn-primary" 
+                style="padding: 3px 6px; font-size: 0.72rem; border-radius: 4px; line-height: 1;" 
+                title="Guardar nuevo margen (Enter)">
+          <i class="fa-solid fa-check"></i>
+        </button>
+        <button type="button" 
+                onclick="DashboardView.restaurarCeldaMargen(${id_producto}, ${margenActual})" 
+                class="btn btn-secondary" 
+                style="padding: 3px 6px; font-size: 0.72rem; border-radius: 4px; line-height: 1;" 
+                title="Cancelar (Esc)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    `;
+
+    const input = document.getElementById(`input-margen-rapido-${id_producto}`);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  },
+
+  teclaMargenRapido(e, id_producto, margenActual) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.guardarMargenRapido(id_producto);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      this.restaurarCeldaMargen(id_producto, margenActual);
+    }
+  },
+
+  async guardarMargenRapido(id_producto) {
+    const input = document.getElementById(`input-margen-rapido-${id_producto}`);
+    if (!input) return;
+
+    const nuevoMargen = parseFloat(input.value);
+    if (isNaN(nuevoMargen) || nuevoMargen < 0) {
+      App.toast('El margen debe ser un número mayor o igual a 0.', 'warning');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/productos/${id_producto}/margen`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ margen_ganancia: nuevoMargen })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Error al actualizar margen');
+      }
+
+      App.toast(data.mensaje, 'success');
+
+      // Actualizar producto en memoria de catálogo
+      const prod = this.productos.find(p => p.id_producto === id_producto);
+      if (prod) {
+        prod.margen_ganancia = data.data.margen_ganancia;
+        prod.precio_base = data.data.precio_base;
+        prod.precio_venta_final = data.data.precio_venta_final;
+      }
+
+      // Actualizar celdas en la fila
+      this.restaurarCeldaMargen(id_producto, data.data.margen_ganancia);
+      const colBase = document.getElementById(`col-base-${id_producto}`);
+      if (colBase) colBase.textContent = App.formatoMoneda(data.data.precio_base);
+      const colFinal = document.getElementById(`col-final-${id_producto}`);
+      if (colFinal) colFinal.textContent = App.formatoMoneda(data.data.precio_venta_final);
+
+      // Sincronizar Punto de Cobro (POS)
+      if (window.PosView && Array.isArray(window.PosView.productos)) {
+        const prodPos = window.PosView.productos.find(p => p.id_producto === id_producto);
+        if (prodPos) {
+          prodPos.precio_base = data.data.precio_base;
+          prodPos.precio_venta_final = data.data.precio_venta_final;
+          prodPos.margen_ganancia = data.data.margen_ganancia;
+          if (typeof window.PosView.renderProductos === 'function') {
+            window.PosView.renderProductos(window.PosView.productos);
+          }
+        }
+      }
+    } catch (err) {
+      App.toast(err.message, 'danger');
+      const prod = this.productos.find(p => p.id_producto === id_producto);
+      this.restaurarCeldaMargen(id_producto, prod ? (prod.margen_ganancia || 30) : 30);
+    }
+  },
+
+  restaurarCeldaMargen(id_producto, margen) {
+    const celda = document.getElementById(`celda-margen-${id_producto}`);
+    if (!celda) return;
+
+    celda.innerHTML = `
+      <button type="button" 
+              id="btn-margen-${id_producto}"
+              onclick="DashboardView.activarEdicionRapidaMargen(${id_producto}, ${margen})"
+              class="badge" 
+              style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" 
+              title="Clic para editar rápidamente este margen y recalcular precio">
+        <span>${margen}%</span>
+        <i class="fa-solid fa-pen" style="font-size: 0.65rem; opacity: 0.7;"></i>
+      </button>
+    `;
   },
 
   // Desactivación lógica de productos (Soft Delete)
@@ -375,8 +508,8 @@ const DashboardView = {
       selectCat.value = cat ? cat.id_categoria : (prod.id_categoria || '');
     }
 
-    // Guardar costo referencial registrado
-    const costoRef = Number(prod.ultimo_costo_compra || 0);
+    // Guardar costo referencial registrado (lote vigente de mayor costo o último lote)
+    const costoRef = Number(prod.costo_lote_vigente || prod.ultimo_costo_compra || 0);
     if (inputCostoOculto) inputCostoOculto.value = costoRef;
 
     if (titulo) titulo.textContent = 'Editar Producto & Precios Comerciales';

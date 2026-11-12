@@ -102,6 +102,17 @@ class InventarioService {
            WHERE l.id_producto = p.id_producto AND l.cantidad_disponible > 0 AND l.fecha_vencimiento >= CURDATE() AND l.estado_lote != 'Dado de Baja'
          ), 0) AS stock_vigente_no_vencido,
          IFNULL((
+           SELECT MAX(l.costo_unitario)
+           FROM lotes l 
+           WHERE l.id_producto = p.id_producto AND l.cantidad_disponible > 0 AND l.estado_lote != 'Dado de Baja'
+         ), IFNULL((
+           SELECT l.costo_unitario 
+           FROM lotes l 
+           WHERE l.id_producto = p.id_producto 
+           ORDER BY l.fecha_ingreso DESC, l.id_lote DESC 
+           LIMIT 1
+         ), 0)) AS costo_lote_vigente,
+         IFNULL((
            SELECT l.costo_unitario 
            FROM lotes l 
            WHERE l.id_producto = p.id_producto 

@@ -215,6 +215,12 @@ const ComprasView = {
         label.innerHTML = `<strong>${item.nombre}</strong> <span style="color: var(--text-muted); font-size: 0.78rem;">(Cód: ${item.codigo_barras})</span>`;
       }
 
+      // Autocompletar % Margen de Ganancia del producto seleccionado
+      const inputMargen = document.getElementById('compras-margen');
+      if (inputMargen) {
+        inputMargen.value = item.margen_ganancia !== undefined ? item.margen_ganancia : 30;
+      }
+
       // Visualización de último costo de compra y margen sugerido
       this.actualizarBadgeUltimoCosto(item);
       this.actualizarAvisoMargen();
@@ -262,6 +268,7 @@ const ComprasView = {
     const infoDiv = document.getElementById('compras-info-margen');
     const inputProd = document.getElementById('compras-producto');
     const inputCosto = document.getElementById('compras-costo');
+    const inputMargen = document.getElementById('compras-margen');
     if (!infoDiv) return;
 
     const idProducto = parseInt(inputProd?.value || 0, 10);
@@ -274,7 +281,9 @@ const ComprasView = {
       return;
     }
 
-    const margen = parseFloat(prod.margen_ganancia) || 30.00;
+    const margenVal = inputMargen && inputMargen.value !== '' ? parseFloat(inputMargen.value) : NaN;
+    const margen = !isNaN(margenVal) && margenVal >= 0 ? margenVal : (parseFloat(prod.margen_ganancia) || 30.00);
+
     let tasaIva = 0;
     if (String(prod.tarifa_iva) === '19') tasaIva = 0.19;
     else if (String(prod.tarifa_iva) === '5') tasaIva = 0.05;
@@ -449,12 +458,16 @@ const ComprasView = {
 
     const prod = this.productos.find(p => p.id_producto === id_producto);
     const forzar_precio = Boolean(document.getElementById('compras-forzar-precio')?.checked);
+    const inputMargen = document.getElementById('compras-margen');
+    const margenVal = inputMargen && inputMargen.value !== '' ? parseFloat(inputMargen.value) : NaN;
+    const margen_ganancia = !isNaN(margenVal) && margenVal >= 0 ? margenVal : (parseFloat(prod?.margen_ganancia) || 30.00);
 
     this.itemsRecepcion.push({
       id_producto,
       nombre_producto: prod ? prod.nombre : `Producto #${id_producto}`,
       numero_lote,
       cantidad,
+      margen_ganancia,
       costo_unitario,
       fecha_vencimiento,
       forzar_precio,
@@ -464,6 +477,7 @@ const ComprasView = {
     // Limpiar campos para el siguiente ítem
     if (inputCant) inputCant.value = '';
     if (inputCosto) inputCosto.value = '';
+    if (inputMargen) inputMargen.value = '';
     if (inputVence) inputVence.value = '';
     const checkForzar = document.getElementById('compras-forzar-precio');
     if (checkForzar) checkForzar.checked = false;
@@ -488,7 +502,7 @@ const ComprasView = {
     if (!tbody) return;
 
     if (this.itemsRecepcion.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">No se han agregado lotes a la recepción actual.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 25px;">No se han agregado lotes a la recepción actual.</td></tr>`;
       if (elTotal) elTotal.textContent = '$ 0.00';
       return;
     }
@@ -501,6 +515,7 @@ const ComprasView = {
           <td><strong>${it.nombre_producto}</strong></td>
           <td><code style="color: var(--primary);">${it.numero_lote}</code></td>
           <td style="font-weight: bold;">${it.cantidad} u.</td>
+          <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); font-weight: 700;">${it.margen_ganancia}%</span></td>
           <td>${App.formatoMoneda(it.costo_unitario)}</td>
           <td>${it.fecha_vencimiento}</td>
           <td style="font-weight: bold; color: var(--success);">${App.formatoMoneda(it.subtotal)}</td>
@@ -538,6 +553,7 @@ const ComprasView = {
         numero_lote: it.numero_lote,
         cantidad: it.cantidad,
         costo_unitario: it.costo_unitario,
+        margen_ganancia: it.margen_ganancia,
         fecha_vencimiento: it.fecha_vencimiento,
         forzar_precio: Boolean(it.forzar_precio)
       }))
@@ -576,6 +592,8 @@ const ComprasView = {
 
       const inputProd = document.getElementById('compras-producto');
       if (inputProd) inputProd.value = '';
+      const inputMargen = document.getElementById('compras-margen');
+      if (inputMargen) inputMargen.value = '';
       const labelProd = document.getElementById('label-producto');
       if (labelProd) {
         labelProd.classList.add('placeholder');

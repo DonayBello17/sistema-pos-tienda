@@ -122,7 +122,22 @@ class ComprasService {
       );
 
       // 4.6. Regla de Margen Automático y Protección de Reposición (Anti-Pérdidas)
-      const margenProd = parseFloat(prod.margen_ganancia) || 30.00;
+      const margenActual = parseFloat(prod.margen_ganancia) || 30.00;
+      let margenProd = margenActual;
+      let margenModificado = false;
+
+      if (item.margen_ganancia !== undefined && item.margen_ganancia !== null && !isNaN(parseFloat(item.margen_ganancia))) {
+        const margenEnviado = Math.max(0, parseFloat(item.margen_ganancia));
+        if (Math.abs(margenEnviado - margenActual) > 0.001) {
+          margenProd = margenEnviado;
+          margenModificado = true;
+          await conn.query(
+            `UPDATE productos SET margen_ganancia = ? WHERE id_producto = ?`,
+            [Number(margenProd.toFixed(2)), prod.id_producto]
+          );
+        }
+      }
+
       let tasaIva = 0;
       if (String(prod.tarifa_iva) === '19') tasaIva = 0.19;
       else if (String(prod.tarifa_iva) === '5') tasaIva = 0.05;
@@ -131,8 +146,8 @@ class ComprasService {
       const precioBaseActual = parseFloat(prod.precio_base) || 0;
       let precioActualizado = false;
 
-      // Si el costo nuevo empuja un precio base mayor o si se solicita forzar precio
-      if (precioBaseSugerido > precioBaseActual || item.forzar_precio) {
+      // Si el costo nuevo empuja un precio base mayor, si se solicita forzar precio, o si el margen fue modificado
+      if (precioBaseSugerido > precioBaseActual || item.forzar_precio || margenModificado) {
         const nuevoPrecioBase = precioBaseSugerido;
         const nuevoPvp = Number((nuevoPrecioBase * (1 + tasaIva)).toFixed(2));
         await conn.query(
