@@ -52,6 +52,72 @@ class InventarioService {
        WHERE DATE(vf.fecha_venta) = CURDATE()`
     );
 
+    // KPI: Lotes próximos a vencer en 7 días o menos
+    const [[vencen7d]] = await pool.query(
+      `SELECT COUNT(id_lote) AS total_vencen_7d
+       FROM lotes 
+       WHERE cantidad_disponible > 0 
+         AND estado_lote != 'Dado de Baja'
+         AND DATEDIFF(fecha_vencimiento, CURDATE()) BETWEEN 0 AND 7`
+    );
+
+    // KPI: Productos con Stock Crítico (stock_total <= stock_minimo o 0)
+    const [[stockCritico]] = await pool.query(
+      `SELECT COUNT(id_producto) AS total_stock_critico
+       FROM productos 
+       WHERE estado = 'Activo' AND (stock_total <= stock_minimo OR stock_total = 0)`
+    );
+
+    // Gráfica Dashboard 1: Ingresos de los últimos 30 días
+    const [ingresos30d] = await pool.query(
+      `SELECT 
+         DATE_FORMAT(fecha_venta, '%Y-%m-%d') AS fecha,
+         IFNULL(SUM(total_pagar), 0) AS ingresos,
+         COUNT(id_venta) AS transacciones
+       FROM ventas_facturas
+       WHERE fecha_venta >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       GROUP BY DATE_FORMAT(fecha_venta, '%Y-%m-%d')
+       ORDER BY fecha ASC`
+    );
+
+    // Gráfica Dashboard 2: Horas pico de ventas
+    const [horasPico] = await pool.query(
+      `SELECT 
+         HOUR(fecha_venta) AS hora,
+         COUNT(id_venta) AS transacciones,
+         IFNULL(SUM(total_pagar), 0) AS ingresos
+       FROM ventas_facturas
+       WHERE fecha_venta >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       GROUP BY HOUR(fecha_venta)
+       ORDER BY hora ASC`
+    );
+
+    // Lista de Próximos Vencimientos y Alertas de Inventario
+    const [proximosVencimientos] = await pool.query(
+      `SELECT 
+         l.id_lote,
+         p.id_producto,
+         p.nombre AS producto,
+         p.codigo_barras,
+         l.numero_lote,
+         l.cantidad_disponible,
+         l.costo_unitario,
+         DATE_FORMAT(l.fecha_vencimiento, '%Y-%m-%d') AS fecha_vencimiento,
+         DATEDIFF(l.fecha_vencimiento, CURDATE()) AS dias_para_vencer,
+         CASE 
+           WHEN DATEDIFF(l.fecha_vencimiento, CURDATE()) < 0 THEN 'CADUCADO'
+           WHEN DATEDIFF(l.fecha_vencimiento, CURDATE()) BETWEEN 0 AND 7 THEN 'CRITICO'
+           WHEN DATEDIFF(l.fecha_vencimiento, CURDATE()) BETWEEN 8 AND 30 THEN 'PROXIMO'
+           ELSE 'VIGENTE'
+         END AS estado_alerta
+       FROM lotes l
+       JOIN productos p ON l.id_producto = p.id_producto
+       WHERE l.cantidad_disponible > 0 AND l.estado_lote != 'Dado de Baja'
+         AND DATEDIFF(l.fecha_vencimiento, CURDATE()) <= 30
+       ORDER BY l.fecha_vencimiento ASC
+       LIMIT 8`
+    );
+
     return {
       ventas_hoy: Number(ventasHoy.total_ventas),
       transacciones_hoy: Number(ventasHoy.num_transacciones),
@@ -69,7 +135,26 @@ class InventarioService {
       costo_peps: Number(utilidadPeps.costo_peps),
       utilidad_neta: Number(utilidadPeps.utilidad_neta),
       utilidad_hoy: Number(utilidadHoy.utilidad_neta_hoy),
-      costo_peps_hoy: Number(utilidadHoy.costo_peps_hoy)
+      costo_peps_hoy: Number(utilidadHoy.costo_peps_hoy),
+      // Nuevos KPIs ejecutivos
+      por_vencer_7_dias: Number(vencen7d?.total_vencen_7d || 0),
+      stock_critico: Number(stockCritico?.total_stock_critico || 0),
+      serie_ultimos_30_dias: ingresos30d.map(r => ({
+        fecha: r.fecha,
+        ingresos: Number(r.ingresos || 0),
+        transacciones: Number(r.transacciones || 0)
+      })),
+      horas_pico: horasPico.map(r => ({
+        hora: Number(r.hora),
+        transacciones: Number(r.transacciones || 0),
+        ingresos: Number(r.ingresos || 0)
+      })),
+      proximos_vencimientos: proximosVencimientos.map(r => ({
+        ...r,
+        cantidad_disponible: Number(r.cantidad_disponible || 0),
+        costo_unitario: Number(r.costo_unitario || 0),
+        dias_para_vencer: Number(r.dias_para_vencer || 0)
+      }))
     };
   }
 

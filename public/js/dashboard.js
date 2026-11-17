@@ -4,6 +4,8 @@
 const DashboardView = {
   productos: [],
   categorias: [],
+  chartIngresos30d: null,
+  chartHorasPico: null,
 
   async cargar() {
     await Promise.all([
@@ -18,61 +20,75 @@ const DashboardView = {
       const res = await fetch('/api/dashboard/metricas');
       const data = await res.json();
 
-      // 1. Ventas del día
+      // Saludo superior personalizado
+      const elSaludo = document.getElementById('dashboard-saludo-rol');
+      if (elSaludo && window.App && App.usuario) {
+        elSaludo.textContent = `HOLA, ${(App.usuario.rol || 'ADMINISTRADOR').toUpperCase()}`;
+      }
+
+      // 1. KPI 1: Ventas del día
       const elVentas = document.getElementById('stat-ventas');
       const elTransacciones = document.getElementById('stat-transacciones');
       if (elVentas) elVentas.textContent = App.formatoMoneda(data.ventas_hoy || 0);
-      if (elTransacciones) elTransacciones.textContent = data.transacciones_hoy || 0;
+      if (elTransacciones) elTransacciones.textContent = `${data.transacciones_hoy || 0} facturas generadas hoy`;
 
-      // 2. Costo Total del Inventario
+      // 2. KPI 2: Utilidad Real PEPS (Hoy)
+      const elUtilidad = document.getElementById('stat-utilidad-peps');
+      const elUtilidadSub = document.getElementById('stat-utilidad-peps-sub');
+      const utilidadHoy = Number(data.utilidad_hoy !== undefined ? data.utilidad_hoy : (data.utilidad_neta || 0));
+      if (elUtilidad) {
+        const signo = utilidadHoy >= 0 ? '+' : '';
+        elUtilidad.textContent = `${signo}${App.formatoMoneda(utilidadHoy)}`;
+        elUtilidad.style.color = utilidadHoy >= 0 ? '#2DD4BF' : '#F43F5E';
+      }
+      if (elUtilidadSub) {
+        elUtilidadSub.textContent = `Costo lotes hoy: ${App.formatoMoneda(data.costo_peps_hoy || 0)}`;
+      }
+
+      // 3. KPI 3: Por Vencer (≤ 7 días)
+      const elVencen7d = document.getElementById('stat-vencen-7d');
+      const elVencenSub = document.getElementById('stat-vencen-7d-sub');
+      if (elVencen7d) elVencen7d.textContent = `${data.por_vencer_7_dias || 0} lotes`;
+      if (elVencenSub) {
+        const cantAmarillos = data.semaforo ? data.semaforo.amarillos : 0;
+        elVencenSub.textContent = `${cantAmarillos} lotes en riesgo en 30 días`;
+      }
+
+      // 4. KPI 4: Stock Crítico / Bloqueados
+      const elStockCritico = document.getElementById('stat-stock-critico');
+      const elStockCriticoSub = document.getElementById('stat-stock-critico-sub');
+      if (elStockCritico) elStockCritico.textContent = `${data.stock_critico || 0} productos`;
+      if (elStockCriticoSub) {
+        const caducados = data.semaforo ? data.semaforo.rojos : 0;
+        elStockCriticoSub.textContent = `${caducados} lotes caducados bloqueados`;
+      }
+
+      // Métricas compatibles secundarias
       const elInv = document.getElementById('stat-inventario');
       const elUnidades = document.getElementById('stat-unidades');
       if (elInv) elInv.textContent = App.formatoMoneda(data.valor_inventario || 0);
       if (elUnidades) elUnidades.textContent = (data.unidades_bodega || 0).toLocaleString('es-CO');
 
-      // 3. Alertas de Caducidad
-      const elRojos = document.getElementById('stat-rojos');
-      const elAmarillos = document.getElementById('stat-amarillos');
-      const elVerdes = document.getElementById('stat-verdes');
-      if (elRojos) elRojos.textContent = data.semaforo ? data.semaforo.rojos : 0;
-      if (elAmarillos) elAmarillos.textContent = data.semaforo ? data.semaforo.amarillos : 0;
-      if (elVerdes) elVerdes.textContent = data.semaforo ? data.semaforo.verdes : 0;
-
-      // 4. Pérdidas por Productos Descartados
       const elBajas = document.getElementById('stat-bajas');
       const elEventosBaja = document.getElementById('stat-eventos-baja');
       if (elBajas) elBajas.textContent = App.formatoMoneda(data.perdidas_bajas || 0);
       if (elEventosBaja) elEventosBaja.textContent = (data.total_eventos_baja || 0) + ' eventos';
-
-      // 5. Utilidad / Ganancia Real (PEPS)
-      const elUtilidad = document.getElementById('stat-utilidad-peps');
-      const elVentasBase = document.getElementById('stat-ventas-base');
-      const elCostoPeps = document.getElementById('stat-costo-peps');
-      const utilidadNeta = Number(data.utilidad_neta || 0);
-
-      if (elUtilidad) {
-        const signo = utilidadNeta >= 0 ? '+' : '-';
-        const color = utilidadNeta >= 0 ? 'var(--success)' : 'var(--danger)';
-        elUtilidad.innerHTML = `<span style="color: ${color}; font-weight: 800;">${signo}${App.formatoMoneda(Math.abs(utilidadNeta))}</span>`;
-      }
-      if (elVentasBase) elVentasBase.textContent = App.formatoMoneda(data.total_venta || 0);
-      if (elCostoPeps) elCostoPeps.textContent = App.formatoMoneda(data.costo_peps || 0);
 
       // Alerta preventiva si hay lotes vencidos
       const elAlerta = document.getElementById('dashboard-alerta-vencidos');
       if (elAlerta) {
         if (data.semaforo && data.semaforo.rojos > 0) {
           elAlerta.innerHTML = `
-            <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 14px 20px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.35); color: #FDA4AF; padding: 14px 18px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
               <div style="display: flex; align-items: center; gap: 12px;">
-                <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem; color: var(--danger);"></i>
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.25rem; color: #F43F5E;"></i>
                 <div>
-                  <strong>¡Atención! Hay productos con fecha de caducidad superada. El sistema ha bloqueado su cobro en caja por seguridad.</strong>
-                  <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Se recomienda realizar la salida y descarte correspondiente para ajustar el inventario.</div>
+                  <strong style="color: #fff;">¡Atención! Hay lotes con fecha de caducidad superada.</strong>
+                  <div style="font-size: 0.8rem; color: #FDA4AF; margin-top: 2px;">El sistema ha bloqueado su venta en caja por seguridad preventiva.</div>
                 </div>
               </div>
-              <button onclick="App.cambiarVista('semaforo')" class="btn btn-danger" style="padding: 8px 14px; font-size: 0.82rem; white-space: nowrap;">
-                <i class="fa-solid fa-trash-can"></i> Dar de Baja Mercancía
+              <button onclick="App.cambiarVista('semaforo')" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.78rem; white-space: nowrap;">
+                <i class="fa-solid fa-trash-can"></i> Dar de Baja
               </button>
             </div>
           `;
@@ -81,9 +97,201 @@ const DashboardView = {
           elAlerta.classList.add('hidden');
         }
       }
+
+      // Renderizar Gráficas del Dashboard
+      this.renderGraficasDashboard(data.serie_ultimos_30_dias, data.horas_pico);
+
+      // Renderizar Lista de Alertas de Vencimiento
+      this.renderAlertasVencimiento(data.proximos_vencimientos);
+
     } catch (err) {
       console.error('Error al cargar métricas:', err);
     }
+  },
+
+  renderGraficasDashboard(serieIngresos, serieHoras) {
+    // 1. Ingresos últimos 30 días
+    const canvasIngresos = document.getElementById('chart-dashboard-ingresos');
+    if (canvasIngresos) {
+      const ctx = canvasIngresos.getContext('2d');
+      if (this.chartIngresos30d) {
+        this.chartIngresos30d.destroy();
+        this.chartIngresos30d = null;
+      }
+
+      let labels = [];
+      let dataVals = [];
+
+      if (!serieIngresos || serieIngresos.length === 0) {
+        labels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'];
+        dataVals = [0, 0, 0, 0];
+      } else {
+        labels = serieIngresos.map(s => {
+          const p = s.fecha.split('-');
+          return `${p[2]}/${p[1]}`;
+        });
+        dataVals = serieIngresos.map(s => s.ingresos);
+      }
+
+      const gradiente = ctx.createLinearGradient(0, 0, 0, 240);
+      gradiente.addColorStop(0, 'rgba(45, 212, 191, 0.28)');
+      gradiente.addColorStop(1, 'rgba(45, 212, 191, 0.00)');
+
+      this.chartIngresos30d = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Ingresos ($)',
+            data: dataVals,
+            borderColor: '#2DD4BF',
+            backgroundColor: gradiente,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#2DD4BF',
+            pointBorderColor: '#181A1D',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1E2024',
+              titleColor: '#F3F4F6',
+              bodyColor: '#2DD4BF',
+              borderColor: '#272A30',
+              borderWidth: 1,
+              padding: 10,
+              callbacks: {
+                label: (ctx) => ` Ingresos: ${App.formatoMoneda(ctx.parsed.y)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#22252A', drawBorder: false },
+              ticks: { color: '#6B7280', font: { size: 10 } }
+            },
+            y: {
+              grid: { color: '#22252A', drawBorder: false },
+              ticks: {
+                color: '#6B7280',
+                font: { size: 10 },
+                callback: (v) => v >= 1000 ? '$' + (v / 1000).toFixed(0) + 'k' : '$' + v
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Horas pico de ventas
+    const canvasHoras = document.getElementById('chart-dashboard-horas');
+    if (canvasHoras) {
+      const ctx = canvasHoras.getContext('2d');
+      if (this.chartHorasPico) {
+        this.chartHorasPico.destroy();
+        this.chartHorasPico = null;
+      }
+
+      // Horas estándar comerciales 08h a 21h
+      const horasEje = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+      const dataHoras = horasEje.map(h => {
+        const item = (serieHoras || []).find(x => x.hora === h);
+        return item ? item.transacciones : 0;
+      });
+
+      this.chartHorasPico = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: horasEje.map(h => `${String(h).padStart(2, '0')}h`),
+          datasets: [{
+            label: 'Transacciones',
+            data: dataHoras,
+            backgroundColor: '#10B981',
+            borderRadius: 6,
+            hoverBackgroundColor: '#2DD4BF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1E2024',
+              titleColor: '#F3F4F6',
+              bodyColor: '#10B981',
+              borderColor: '#272A30',
+              borderWidth: 1,
+              padding: 10,
+              callbacks: {
+                label: (ctx) => ` Facturas: ${ctx.parsed.y}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: '#6B7280', font: { size: 9 } }
+            },
+            y: {
+              grid: { color: '#22252A', drawBorder: false },
+              ticks: { color: '#6B7280', font: { size: 10 }, stepSize: 1 }
+            }
+          }
+        }
+      });
+    }
+  },
+
+  renderAlertasVencimiento(alertas) {
+    const contenedor = document.getElementById('dashboard-lista-alertas');
+    if (!contenedor) return;
+
+    if (!alertas || alertas.length === 0) {
+      contenedor.innerHTML = '<div style="color: var(--text-dim); text-align: center; padding: 24px;">No hay alertas preventivas ni lotes próximos a caducar.</div>';
+      return;
+    }
+
+    contenedor.innerHTML = alertas.map(item => {
+      let badgeHtml = '';
+      if (item.estado_alerta === 'CADUCADO') {
+        badgeHtml = `<span class="badge" style="background: rgba(244,63,94,0.15); color: #F43F5E; border: 1px solid rgba(244,63,94,0.35); font-weight: 700; font-size: 0.72rem;"><i class="fa-solid fa-circle-xmark"></i> CADUCADO (${Math.abs(item.dias_para_vencer)}d atrás)</span>`;
+      } else if (item.estado_alerta === 'CRITICO') {
+        badgeHtml = `<span class="badge" style="background: rgba(244,63,94,0.15); color: #F43F5E; border: 1px solid rgba(244,63,94,0.35); font-weight: 700; font-size: 0.72rem;"><i class="fa-solid fa-triangle-exclamation"></i> CRÍTICO (${item.dias_para_vencer}d)</span>`;
+      } else {
+        badgeHtml = `<span class="badge" style="background: rgba(245,158,11,0.15); color: #F59E0B; border: 1px solid rgba(245,158,11,0.35); font-weight: 700; font-size: 0.72rem;"><i class="fa-solid fa-clock"></i> PRÓXIMO (${item.dias_para_vencer}d)</span>`;
+      }
+
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #141619; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--warning);">
+              <i class="fa-solid fa-box-open" style="font-size: 0.85rem;"></i>
+            </div>
+            <div>
+              <strong style="color: #fff; font-size: 0.86rem;">${item.producto}</strong>
+              <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 1px;">
+                Lote: <code style="color: #2DD4BF;">${item.numero_lote}</code> &bull; Disp: <b style="color: #fff;">${item.cantidad_disponible} u.</b> &bull; Vence: ${item.fecha_vencimiento}
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            ${badgeHtml}
+            <button onclick="App.cambiarVista('semaforo')" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" title="Gestionar en Semáforo">
+              Gestionar
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
   },
 
   async cargarCatalogo() {

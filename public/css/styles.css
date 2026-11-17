@@ -1,23 +1,23 @@
 :root {
-  --bg-main: #0b0f19;
-  --bg-card: #111827;
-  --bg-card-sub: #1f2937;
-  --bg-hover: #283548;
-  --border: #374151;
-  --border-light: #4b5563;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.25);
-  --text: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
-  --success: #10b981;
+  --bg-main: #111315;
+  --bg-card: #181A1D;
+  --bg-card-sub: #1f2328;
+  --bg-hover: #262a30;
+  --border: #272A30;
+  --border-light: #363a43;
+  --primary: #2DD4BF;
+  --primary-hover: #14b8a6;
+  --primary-glow: rgba(45, 212, 191, 0.2);
+  --text: #F3F4F6;
+  --text-muted: #9CA3AF;
+  --text-dim: #6B7280;
+  --success: #10B981;
   --success-glow: rgba(16, 185, 129, 0.2);
-  --warning: #f59e0b;
+  --warning: #F59E0B;
   --warning-glow: rgba(245, 158, 11, 0.2);
-  --danger: #ef4444;
-  --danger-glow: rgba(239, 68, 68, 0.2);
-  --info: #0284c7;
+  --danger: #F43F5E;
+  --danger-glow: rgba(244, 63, 94, 0.2);
+  --info: #38bdf8;
   --radius: 12px;
   --radius-sm: 8px;
 }
@@ -50,7 +50,7 @@ aside {
 }
 
 .brand {
-  padding: 22px 20px;
+  padding: 20px 18px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -58,23 +58,33 @@ aside {
 }
 
 .brand-icon {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--primary), #a855f7);
+  background: linear-gradient(135deg, var(--primary), #0d9488);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
-  color: #fff;
+  font-size: 1.15rem;
+  color: #111315;
   box-shadow: 0 4px 14px var(--primary-glow);
 }
 
 .nav-list {
-  padding: 16px 12px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
+  overflow-y: auto;
+}
+
+.nav-section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6B7280;
+  padding: 12px 12px 4px;
 }
 
 .nav-btn {
@@ -82,12 +92,12 @@ aside {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 10px;
   border: none;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
@@ -95,21 +105,39 @@ aside {
 }
 
 .nav-btn:hover {
-  background-color: var(--bg-card-sub);
+  background-color: var(--bg-hover);
   color: #fff;
 }
 
 .nav-btn.active {
-  background-color: var(--primary);
-  color: #fff;
+  background: rgba(45, 212, 191, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(45, 212, 191, 0.3);
   font-weight: 600;
-  box-shadow: 0 4px 14px var(--primary-glow);
+  box-shadow: none;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10B981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseDot 2s infinite;
+  display: inline-block;
+  margin-left: auto;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 .user-box {
-  padding: 16px 18px;
+  padding: 14px 16px;
   border-top: 1px solid var(--border);
-  background-color: rgba(17, 24, 39, 0.7);
+  background-color: #141619;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -146,21 +174,44 @@ main {
 }
 
 header {
-  height: 70px;
+  height: 64px;
   border-bottom: 1px solid var(--border);
-  padding: 0 32px;
+  padding: 0 28px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: rgba(17, 24, 39, 0.65);
-  backdrop-filter: blur(12px);
+  background-color: var(--bg-card);
   position: sticky;
   top: 0;
   z-index: 15;
 }
 
+.topbar-date-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #141619;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.topbar-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #141619;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+}
+
 .content {
-  padding: 28px 32px;
+  padding: 24px 28px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -170,17 +221,17 @@ header {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 20px;
+  gap: 18px;
 }
 
 .card-stat {
-  background: linear-gradient(180deg, var(--bg-card) 0%, rgba(17, 24, 39, 0.85) 100%);
+  background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
+  border-radius: 12px;
+  padding: 20px;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   transition: transform 0.2s, border-color 0.2s;
 }
 
@@ -193,7 +244,7 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   text-transform: uppercase;
   color: var(--text-muted);
   font-weight: 700;
@@ -201,21 +252,46 @@ header {
 }
 
 .stat-icon {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .stat-val {
-  font-size: 1.75rem;
+  font-size: 1.65rem;
   font-weight: 800;
-  margin-top: 12px;
+  margin-top: 10px;
   color: #fff;
   letter-spacing: -0.02em;
+}
+
+/* PÍLDORAS DE FILTRO */
+.btn-pildora {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #141619;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-pildora:hover {
+  background: var(--bg-hover);
+  color: #fff;
+}
+
+.btn-pildora.active {
+  background: rgba(45, 212, 191, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
 }
 
 .stat-desc {

@@ -239,6 +239,157 @@ class ReportesController {
       res.status(500).json({ error: 'Error al generar arqueo de caja: ' + err.message });
     }
   }
+
+  /**
+   * Reporte Gerencial Ejecutivo Consolidado (Filtros por Fecha)
+   * KPIs, Serie Diaria para Gráficas, Recaudo por Método y Top Productos Rentables
+   */
+  static async obtenerReportesGerenciales(req, res) {
+    try {
+      let { desde, hasta } = req.query;
+
+      // Por defecto últimos 30 días
+      if (!hasta) {
+        const d = new Date();
+        hasta = d.toISOString().slice(0, 10);
+      }
+      if (!desde) {
+        const d = new Date(hasta);
+        d.setDate(d.getDate() - 30);
+        desde = d.toISOString().slice(0, 10);
+      }
+
+      // 1. KPIs Generales en el periodo
+      const [[kpisVentas]] = await pool.query(
+        `SELECT 
+           IFNULL(SUM(vf.total_pagar), 0) AS total_ingresos,
+           COUNT(DISTINCT vf.id_venta) AS cantidad_ventas,
+           IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad_neta_peps,
+           IFNULL(SUM(dv.cantidad), 0) AS unidades_vendidas
+         FROM ventas_facturas vf
+         LEFT JOIN detalle_ventas dv ON vf.id_venta = dv.id_venta
+         WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?`,
+        [desde, hasta]
+      );
+
+      const [[kpisMermas]] = await pool.query(
+        `SELECT IFNULL(SUM(costo_total), 0) AS total_mermas
+         FROM kardex_movimientos
+         WHERE tipo_movimiento IN ('Salida por Baja de Caducidad', 'Salida por Daño')
+           AND DATE(fecha_movimiento) BETWEEN ? AND ?`,
+        [desde, hasta]
+      );
+
+      const totalIngresos = Number(kpisVentas?.total_ingresos || 0);
+      const cantVentas = Number(kpisVentas?.cantidad_ventas || 0);
+      const utilidadPeps = Number(kpisVentas?.utilidad_neta_peps || 0);
+      const unidadesVendidas = Number(kpisVentas?.unidades_vendidas || 0);
+      const totalMermas = Number(kpisMermas?.total_mermas || 0);
+      const ticketPromedio = cantVentas > 0 ? Number((totalIngresos / cantVentas).toFixed(2)) : 0;
+
+      // 2. Serie diaria en el periodo
+      const [serieDiariaRaw] = await pool.query(
+        `SELECT 
+           DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d') AS fecha,
+           IFNULL(SUM(vf.total_pagar), 0) AS ingresos,
+           IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad,
+           COUNT(DISTINCT vf.id_venta) AS transacciones
+         FROM ventas_facturas vf
+         LEFT JOIN detalle_ventas dv ON vf.id_venta = dv.id_venta
+         WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?
+         GROUP BY DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d')
+         ORDER BY fecha ASC`,
+        [desde, hasta]
+      );
+
+      const serieDiaria = serieDiariaRaw.map(r => ({
+        fecha: r.fecha,
+        ingresos: Number(r.ingresos || 0),
+        utilidad: Number(r.utilidad || 0),
+        transacciones: Number(r.transacciones || 0)
+      }));
+
+      // 3. Por Método de Pago
+      const [metodosRaw] = await pool.query(
+        `SELECT 
+           IFNULL(vf.metodo_pago, 'Efectivo') AS metodo_pago,
+           IFNULL(SUM(vf.total_pagar), 0) AS total,
+           COUNT(vf.id_venta) AS transacciones
+         FROM ventas_facturas vf
+         WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?
+         GROUP BY vf.metodo_pago`,
+        [desde, hasta]
+      );
+
+      const metodosEstandar = ['Efectivo', 'Tarjeta', 'Transferencia'];
+      const porMetodoPago = metodosEstandar.map(m => {
+        const item = metodosRaw.find(x => x.metodo_pago === m);
+        const total = item ? Number(item.total || 0) : 0;
+        const transacciones = item ? Number(item.transacciones || 0) : 0;
+        const porcentaje = totalIngresos > 0 ? Number(((total / totalIngresos) * 100).toFixed(1)) : 0;
+        return {
+          metodo_pago: m,
+          total,
+          porcentaje,
+          transacciones
+        };
+      });
+
+      // 4. Top 5 Productos más Vendidos / Rentables
+      const [topProductosRaw] = await pool.query(
+        `SELECT 
+           p.id_producto,
+           p.nombre,
+           p.codigo_barras,
+           IFNULL(SUM(dv.cantidad), 0) AS unidades_vendidas,
+           IFNULL(SUM(dv.subtotal_linea + dv.valor_iva_linea), 0) AS ingresos_totales,
+           IFNULL(SUM(dv.cantidad * dv.costo_unitario_compra), 0) AS costo_peps,
+           IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad_peps,
+           ROUND(AVG(IFNULL(p.margen_ganancia, 30)), 1) AS margen_promedio
+         FROM detalle_ventas dv
+         JOIN ventas_facturas vf ON dv.id_venta = vf.id_venta
+         JOIN productos p ON dv.id_producto = p.id_producto
+         WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?
+         GROUP BY p.id_producto, p.nombre, p.codigo_barras
+         ORDER BY utilidad_peps DESC, unidades_vendidas DESC
+         LIMIT 5`,
+        [desde, hasta]
+      );
+
+      const topProductos = topProductosRaw.map((p, idx) => ({
+        posicion: idx + 1,
+        id_producto: p.id_producto,
+        nombre: p.nombre,
+        codigo_barras: p.codigo_barras,
+        unidades_vendidas: Number(p.unidades_vendidas || 0),
+        ingresos_totales: Number(p.ingresos_totales || 0),
+        costo_peps: Number(p.costo_peps || 0),
+        utilidad_peps: Number(p.utilidad_peps || 0),
+        margen_promedio: Number(p.margen_promedio || 30)
+      }));
+
+      res.json({
+        ok: true,
+        periodo: { desde, hasta },
+        kpis: {
+          total_ingresos: totalIngresos,
+          cantidad_ventas: cantVentas,
+          utilidad_neta_peps: utilidadPeps,
+          ticket_promedio: ticketPromedio,
+          unidades_vendidas: unidadesVendidas,
+          total_mermas: totalMermas
+        },
+        serie_diaria: serieDiaria,
+        por_metodo_pago: porMetodoPago,
+        top_productos: topProductos
+      });
+    } catch (err) {
+      res.status(500).json({
+        ok: false,
+        error: 'Error al generar reporte gerencial: ' + err.message
+      });
+    }
+  }
 }
 
 module.exports = ReportesController;

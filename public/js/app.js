@@ -9,8 +9,20 @@ const App = {
 
   // Inicialización
   init() {
+    this.actualizarFechaTopbar();
     this.cargarUsuario();
     this.configurarNavegacion();
+  },
+
+  actualizarFechaTopbar() {
+    const elFecha = document.getElementById('topbar-fecha-texto');
+    if (!elFecha) return;
+    const meses = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    const hoy = new Date();
+    const dia = hoy.getDate();
+    const mes = meses[hoy.getMonth()];
+    const anio = hoy.getFullYear();
+    elFecha.textContent = `${dia} DE ${mes} DE ${anio}`;
   },
 
   // Gestión de Usuario, RBAC y Sesión
@@ -54,15 +66,16 @@ const App = {
   },
 
   aplicarRBAC() {
-    const esCajero = this.usuario && this.usuario.rol === 'Cajero';
+    const rolActual = this.usuario ? this.usuario.rol : '';
+    const esCajero = rolActual === 'Cajero';
 
-    // Restringir botones del Sidebar
-    document.querySelectorAll('.nav-btn[data-roles]').forEach(btn => {
-      const rolesPermitidos = btn.getAttribute('data-roles').split(',');
-      if (!rolesPermitidos.includes(this.usuario.rol)) {
-        btn.style.display = 'none';
+    // Restringir elementos del Sidebar (botones y títulos de sección)
+    document.querySelectorAll('[data-roles]').forEach(el => {
+      const rolesPermitidos = el.getAttribute('data-roles').split(',').map(r => r.trim());
+      if (!rolesPermitidos.includes(rolActual)) {
+        el.style.display = 'none';
       } else {
-        btn.style.display = 'flex';
+        el.style.display = el.classList.contains('nav-btn') ? 'flex' : 'block';
       }
     });
 
@@ -108,10 +121,19 @@ const App = {
 
     // Protección RBAC estricta en el cambio de vista
     if (this.usuario && this.usuario.rol === 'Cajero') {
-      if (vista !== 'pos' && vista !== 'novedades') {
-        this.toast('Acceso restringido: El rol Cajero tiene acceso a Punto de Cobro, Devoluciones y Cierre de Caja.', 'warning');
+      if (vista !== 'pos') {
+        this.toast('Acceso restringido: El rol Cajero tiene acceso a Punto de Cobro y Cierre de Caja.', 'warning');
         vista = 'pos';
       }
+    }
+
+    if (vista === 'catalogo') {
+      vista = 'dashboard';
+      this.vistaActual = 'dashboard';
+      setTimeout(() => {
+        const tablaCat = document.querySelector('.table-container') || document.getElementById('tabla-productos-body');
+        if (tablaCat) tablaCat.scrollIntoView({ behavior: 'smooth' });
+      }, 200);
     }
 
     this.vistaActual = vista;
@@ -124,7 +146,7 @@ const App = {
     });
 
     // Ocultar todas las secciones
-    const secciones = ['dashboard', 'pos', 'semaforo', 'kardex', 'compras', 'novedades', 'devoluciones'];
+    const secciones = ['dashboard', 'pos', 'semaforo', 'kardex', 'compras', 'novedades', 'devoluciones', 'reportes'];
     secciones.forEach(s => {
       const el = document.getElementById(`vista-${s}`);
       if (el) el.classList.add('hidden');
@@ -143,7 +165,8 @@ const App = {
       kardex: { titulo: 'Movimientos de Inventario', subtitulo: 'Historial de entradas por compra, ventas y salidas por caducidad' },
       compras: { titulo: 'Recepción de Mercancía', subtitulo: 'Ingreso formal de productos con asignación de lote y costo' },
       novedades: { titulo: 'Devoluciones y Averías', subtitulo: 'Control de reingresos, bajas por caducidad y pérdidas en mercancía' },
-      devoluciones: { titulo: 'Devoluciones y Averías', subtitulo: 'Control de reingresos, bajas por caducidad y pérdidas en mercancía' }
+      devoluciones: { titulo: 'Devoluciones y Averías', subtitulo: 'Control de reingresos, bajas por caducidad y pérdidas en mercancía' },
+      reportes: { titulo: 'Reportes Gerenciales', subtitulo: 'Análisis Financiero, Rentabilidad PEPS y Métodos de Pago' }
     };
 
     const headerTit = document.getElementById('titulo-seccion');
@@ -164,6 +187,7 @@ const App = {
       if (typeof cargarNovedades === 'function') cargarNovedades();
       else if (window.NovedadesView) NovedadesView.cargar();
     }
+    if (vista === 'reportes' && window.ReportesView) ReportesView.cargar();
   },
 
   // Recarga global de datos

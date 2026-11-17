@@ -6,6 +6,7 @@
   <title>Gestión Comercial - Control de Ventas e Inventario</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -16,50 +17,59 @@
   <aside>
     <div>
       <div class="brand">
-        <div class="brand-icon"><i class="fa-solid fa-store"></i></div>
+        <div class="brand-icon"><i class="fa-solid fa-cube"></i></div>
         <div>
-          <h2 style="font-size: 0.92rem; font-weight: 800; letter-spacing: 0.5px; line-height: 1.2;">SISTEMA DE GESTIÓN COMERCIAL</h2>
-          <p style="font-size: 0.72rem; color: var(--primary); font-weight: 700; margin-top: 2px;">Control de Inventarios & Facturación</p>
+          <h2 style="font-size: 0.88rem; font-weight: 800; letter-spacing: 0.5px; line-height: 1.2; color: #fff;">SISTEMA POS & PEPS</h2>
+          <p style="font-size: 0.70rem; color: var(--primary); font-weight: 700; margin-top: 2px;">Control Gerencial de Inventario</p>
         </div>
       </div>
 
       <nav class="nav-list">
-        <!-- Vistas Administrador -->
+        <!-- SECCIÓN 1: GENERAL -->
+        <div class="nav-section-title">GENERAL</div>
         <button data-vista="dashboard" data-roles="Administrador" class="nav-btn active">
-          <i class="fa-solid fa-chart-pie" style="width: 20px;"></i>
-          <span>Panel de Control</span>
+          <i class="fa-solid fa-chart-pie" style="width: 18px;"></i>
+          <span>Resumen Operativo</span>
         </button>
 
-        <!-- Vista Compartida (Punto de Cobro) -->
         <button data-vista="pos" data-roles="Administrador,Cajero" class="nav-btn">
-          <i class="fa-solid fa-cash-register" style="width: 20px; color: var(--success);"></i>
+          <i class="fa-solid fa-cash-register" style="width: 18px; color: var(--success);"></i>
           <span>Punto de Cobro</span>
+          <span class="pulse-dot" title="Terminal de Cobro Activo"></span>
         </button>
 
-        <!-- Vistas Administrador -->
-        <button data-vista="semaforo" data-roles="Administrador" class="nav-btn">
-          <i class="fa-solid fa-calendar-check" style="width: 20px; color: var(--warning);"></i>
-          <span>Control de Vencimientos</span>
-        </button>
-        <button data-vista="kardex" data-roles="Administrador" class="nav-btn">
-          <i class="fa-solid fa-clipboard-list" style="width: 20px; color: #38bdf8;"></i>
-          <span>Movimientos de Inventario</span>
-        </button>
+        <!-- SECCIÓN 2: OPERACIÓN -->
+        <div class="nav-section-title" data-roles="Administrador">OPERACIÓN</div>
         <button data-vista="compras" data-roles="Administrador" class="nav-btn">
-          <i class="fa-solid fa-truck-ramp-box" style="width: 20px; color: #c084fc;"></i>
+          <i class="fa-solid fa-truck-ramp-box" style="width: 18px; color: #c084fc;"></i>
           <span>Recepción de Mercancía</span>
         </button>
-
-        <!-- Módulo Devoluciones / Averías Compartido -->
-        <button data-vista="novedades" data-roles="Administrador,Cajero" class="nav-btn">
-          <i class="fa-solid fa-arrows-rotate" style="width: 20px; color: #38bdf8;"></i>
+        <button data-vista="semaforo" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-calendar-check" style="width: 18px; color: var(--warning);"></i>
+          <span>Control de Vencimientos</span>
+        </button>
+        <button data-vista="novedades" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-arrows-rotate" style="width: 18px; color: #38bdf8;"></i>
           <span>Devoluciones / Averías</span>
         </button>
+        <button data-vista="kardex" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-clipboard-list" style="width: 18px; color: #38bdf8;"></i>
+          <span>Movimientos PEPS</span>
+        </button>
 
-        <!-- Cierre y Cuadre de Caja Compartido -->
+        <!-- SECCIÓN 3: GESTIÓN -->
+        <div class="nav-section-title">GESTIÓN</div>
         <button id="nav-btn-arqueo" data-roles="Administrador,Cajero" onclick="App.abrirArqueoCaja()" class="nav-btn">
-          <i class="fa-solid fa-vault" style="width: 20px; color: var(--warning);"></i>
+          <i class="fa-solid fa-vault" style="width: 18px; color: var(--warning);"></i>
           <span>Cierre y Cuadre de Caja</span>
+        </button>
+        <button data-vista="reportes" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-chart-line" style="width: 18px; color: var(--primary);"></i>
+          <span>Reportes Gerenciales</span>
+        </button>
+        <button data-vista="catalogo" data-roles="Administrador" class="nav-btn">
+          <i class="fa-solid fa-tags" style="width: 18px; color: #38bdf8;"></i>
+          <span>Catálogo y Márgenes</span>
         </button>
       </nav>
     </div>
@@ -69,15 +79,15 @@
       <div class="user-info">
         <div class="avatar" id="user-avatar">US</div>
         <div style="overflow: hidden;">
-          <p id="user-nombre" style="font-size: 0.85rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis;">Usuario</p>
+          <p id="user-nombre" style="font-size: 0.84rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; color: #fff;">Usuario</p>
           <div style="display: flex; gap: 6px; align-items: center; margin-top: 2px;">
-            <p id="user-rol" style="font-size: 0.72rem; color: var(--text-muted);">Rol</p>
-            <span class="badge badge-success" style="padding: 1px 6px; font-size: 0.62rem;">ACTIVO</span>
+            <p id="user-rol" style="font-size: 0.70rem; color: var(--text-muted);">Rol</p>
+            <span class="badge badge-success" style="padding: 1px 6px; font-size: 0.60rem;">ACTIVO</span>
           </div>
         </div>
       </div>
-      <button onclick="App.cerrarSesion()" class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.75rem; border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;" title="Cerrar Sesión">
-        <i class="fa-solid fa-right-from-bracket"></i>
+      <button onclick="App.cerrarSesion()" class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.75rem; border-color: rgba(244, 63, 94, 0.3); color: #FDA4AF;" title="Cerrar Sesión">
+        <i class="fa-solid fa-arrow-right-from-bracket"></i>
       </button>
     </div>
   </aside>
@@ -86,21 +96,25 @@
   <main>
     <header>
       <div>
-        <h2 id="titulo-seccion" style="font-size: 1.2rem; font-weight: 800; letter-spacing: -0.01em;">Resumen General del Negocio</h2>
-        <p id="subtitulo-seccion" style="font-size: 0.78rem; color: var(--text-muted);">Métricas de Ventas, Inventario y Productos</p>
+        <h2 id="titulo-seccion" style="font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; color: #fff;">Resumen General del Negocio</h2>
+        <p id="subtitulo-seccion" style="font-size: 0.76rem; color: var(--text-muted);">Métricas de Ventas, Inventario y Productos</p>
       </div>
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <span class="badge badge-info" style="font-family: monospace;">
-          <i class="fa-solid fa-database"></i> sistema_pos_tienda
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="topbar-date-pill">
+          <i class="fa-regular fa-calendar" style="color: var(--primary);"></i>
+          <span id="topbar-fecha-texto">17 DE NOV DE 2026</span>
+        </div>
+        <span class="badge" style="background: rgba(45, 212, 191, 0.12); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); font-family: monospace; font-size: 0.74rem;">
+          <i class="fa-solid fa-cloud"></i> TiDB Cloud
         </span>
-        <button onclick="NovedadesView.abrirModal()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
-          <i class="fa-solid fa-arrows-rotate" style="color: #38bdf8;"></i> Devolución / Avería
+        <button onclick="NovedadesView.abrirModal()" class="btn btn-secondary" style="padding: 7px 12px; font-size: 0.78rem;">
+          <i class="fa-solid fa-arrows-rotate" style="color: #38bdf8;"></i> Devolución
         </button>
-        <button onclick="App.abrirArqueoCaja()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
-          <i class="fa-solid fa-vault" style="color: var(--warning);"></i> Cierre y Cuadre de Caja
+        <button onclick="App.abrirArqueoCaja()" class="btn btn-secondary" style="padding: 7px 12px; font-size: 0.78rem;">
+          <i class="fa-solid fa-vault" style="color: var(--warning);"></i> Cierre Caja
         </button>
-        <button onclick="App.recargarTodo()" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.82rem;">
-          <i class="fa-solid fa-rotate"></i> Actualizar
+        <button onclick="App.recargarTodo()" class="btn btn-secondary" style="padding: 7px 10px; font-size: 0.78rem;" title="Actualizar datos">
+          <i class="fa-solid fa-rotate"></i>
         </button>
       </div>
     </header>
@@ -109,69 +123,110 @@
 
       <!-- ================= 1. VISTA PANEL DE CONTROL (DASHBOARD) ================= -->
       <section id="vista-dashboard" style="display: flex; flex-direction: column; gap: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h2 id="dashboard-saludo-rol" style="font-size: 1.15rem; font-weight: 800; letter-spacing: 0.05em; color: #fff;">HOLA, ADMINISTRADOR</h2>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Resumen operativo, rentabilidad PEPS y alertas preventivas en tiempo real</p>
+          </div>
+        </div>
+
         <!-- Banner de alerta dinámica de caducidad -->
         <div id="dashboard-alerta-vencidos" class="hidden"></div>
 
-        <!-- Tarjetas de Métricas (KPI Cards) -->
+        <!-- Tarjetas de Métricas (4 KPI Cards Gerenciales) -->
         <div class="stats-grid">
           <div class="card-stat">
             <div class="card-stat-header">
-              <span>Ventas de Hoy</span>
+              <span>Ventas Hoy</span>
               <div class="stat-icon" style="background: rgba(16,185,129,0.15); color: var(--success);"><i class="fa-solid fa-dollar-sign"></i></div>
             </div>
             <div class="stat-val" id="stat-ventas">$ 0.00</div>
-            <div class="stat-desc">
-              <span id="stat-transacciones" style="color: var(--success); font-weight: bold;">0</span> facturas generadas hoy
-            </div>
+            <div class="stat-desc" id="stat-transacciones">0 facturas generadas hoy</div>
           </div>
 
           <div class="card-stat">
             <div class="card-stat-header">
-              <span>Costo Total del Inventario</span>
-              <div class="stat-icon" style="background: rgba(99,102,241,0.15); color: var(--primary);"><i class="fa-solid fa-boxes-stacked"></i></div>
+              <span>Utilidad Real PEPS (Hoy)</span>
+              <div class="stat-icon" style="background: rgba(45,212,191,0.15); color: var(--primary);"><i class="fa-solid fa-chart-line"></i></div>
             </div>
-            <div class="stat-val" id="stat-inventario">$ 0.00</div>
-            <div class="stat-desc">
-              <span id="stat-unidades" style="color: var(--primary); font-weight: bold;">0</span> unidades activas en inventario
-            </div>
+            <div class="stat-val" id="stat-utilidad-peps" style="color: var(--primary);">$ 0.00</div>
+            <div class="stat-desc" id="stat-utilidad-peps-sub">Costo lotes hoy: $ 0.00</div>
           </div>
 
           <div class="card-stat">
             <div class="card-stat-header">
-              <span>Alertas de Caducidad</span>
+              <span>Por Vencer (≤ 7 días)</span>
               <div class="stat-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fa-solid fa-triangle-exclamation"></i></div>
             </div>
-            <div class="stat-val" style="display: flex; gap: 14px; font-size: 1.05rem; align-items: center; margin-top: 16px;">
-              <span style="color: var(--danger);"><i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> <b id="stat-rojos">0</b> Caducados</span>
-              <span style="color: var(--warning);"><i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> <b id="stat-amarillos">0</b> Próximos a Vencer</span>
-              <span style="color: var(--success);"><i class="fa-solid fa-circle" style="font-size: 0.6rem;"></i> <b id="stat-verdes">0</b> En Fecha</span>
-            </div>
-            <div class="stat-desc">Seguimiento preventivo de vida útil</div>
+            <div class="stat-val" id="stat-vencen-7d" style="color: var(--warning);">0 lotes</div>
+            <div class="stat-desc" id="stat-vencen-7d-sub">En riesgo crítico de caducidad</div>
           </div>
 
           <div class="card-stat">
             <div class="card-stat-header">
-              <span>Utilidad Real (PEPS)</span>
-              <div class="stat-icon" style="background: rgba(16,185,129,0.15); color: var(--success);"><i class="fa-solid fa-chart-line"></i></div>
+              <span>Stock Crítico / Bloqueados</span>
+              <div class="stat-icon" style="background: rgba(244,63,94,0.15); color: var(--danger);"><i class="fa-solid fa-boxes-stacked"></i></div>
             </div>
-            <div class="stat-val" id="stat-utilidad-peps" style="color: var(--success);">$ 0.00</div>
-            <div class="stat-desc">
-              Venta Base: <b id="stat-ventas-base" style="color: #fff;">$ 0.00</b> | Costo Lotes: <b id="stat-costo-peps" style="color: var(--warning);">$ 0.00</b>
+            <div class="stat-val" id="stat-stock-critico" style="color: var(--danger);">0 productos</div>
+            <div class="stat-desc" id="stat-stock-critico-sub">Productos con stock bajo o bloqueado</div>
+          </div>
+        </div>
+
+        <!-- Contenedores ocultos de compatibilidad con métricas secundarias -->
+        <div class="hidden" style="display: none;">
+          <span id="stat-inventario">$ 0.00</span>
+          <span id="stat-unidades">0</span>
+          <span id="stat-rojos">0</span>
+          <span id="stat-amarillos">0</span>
+          <span id="stat-verdes">0</span>
+          <span id="stat-ventas-base">$ 0.00</span>
+          <span id="stat-costo-peps">$ 0.00</span>
+          <span id="stat-bajas">$ 0.00</span>
+          <span id="stat-eventos-baja">0</span>
+        </div>
+
+        <!-- Gráficas del Dashboard: Ingresos últimos 30 días + Horas pico de ventas -->
+        <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px;">
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <div>
+                <h4 style="font-size: 0.92rem; font-weight: 700; color: #fff;">Ingresos últimos 30 días</h4>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Comportamiento histórico de facturación diaria</span>
+              </div>
+              <span class="badge" style="background: rgba(45, 212, 191, 0.1); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.25); font-size: 0.72rem;">Curva Suave</span>
+            </div>
+            <div style="height: 220px; position: relative;">
+              <canvas id="chart-dashboard-ingresos"></canvas>
             </div>
           </div>
 
-          <div class="card-stat">
-            <div class="card-stat-header">
-              <span>Pérdidas por Productos Descartados</span>
-              <div class="stat-icon" style="background: rgba(239,68,68,0.15); color: var(--danger);"><i class="fa-solid fa-trash-can"></i></div>
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+              <div>
+                <h4 style="font-size: 0.92rem; font-weight: 700; color: #fff;">Horas pico de ventas</h4>
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Flujo de transacciones por franja horaria</span>
+              </div>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 0.72rem;">08h - 21h</span>
             </div>
-            <div class="stat-val" id="stat-bajas" style="color: var(--danger);">$ 0.00</div>
-            <div class="stat-desc" style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-              <span><span id="stat-eventos-baja" style="color: var(--danger); font-weight: bold;">0 eventos</span> por caducidad o daño</span>
-              <button onclick="App.cambiarVista('novedades')" class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.72rem; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Ver desglose detallado de mermas y novedades">
-                <i class="fa-solid fa-arrow-trend-down"></i> Ver Detalle
-              </button>
+            <div style="height: 220px; position: relative;">
+              <canvas id="chart-dashboard-horas"></canvas>
             </div>
+          </div>
+        </div>
+
+        <!-- Alertas Próximos Vencimientos -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <div>
+              <h4 style="font-size: 0.92rem; font-weight: 700; color: #fff;"><i class="fa-solid fa-clock-rotate-left" style="color: var(--warning); margin-right: 6px;"></i> Próximos Vencimientos</h4>
+              <span style="font-size: 0.72rem; color: var(--text-muted);">Lotes con caducidad cercana (≤ 30 días) ordenados preventivamente</span>
+            </div>
+            <button onclick="App.cambiarVista('semaforo')" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.74rem;">
+              Ver Semáforo Completo
+            </button>
+          </div>
+          <div id="dashboard-lista-alertas">
+            <div style="color: var(--text-dim); text-align: center; padding: 18px;">Cargando alertas...</div>
           </div>
         </div>
 
@@ -715,6 +770,164 @@
         </div>
       </section>
 
+      <!-- ================= 7. VISTA REPORTES GERENCIALES ================= -->
+      <section id="vista-reportes" class="hidden" style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Barra de Control y Filtros del Reporte -->
+        <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-solid fa-chart-column" style="color: var(--primary);"></i> Reportes Financieros & Rentabilidad PEPS
+            </h3>
+            <p id="reportes-rango-subtitulo" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">
+              Periodo analizado: Últimos 30 días
+            </p>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <!-- Píldoras de Rango Rápido -->
+            <div style="display: flex; gap: 6px;">
+              <button id="btn-filtro-7d" onclick="ReportesView.filtrarRangoRapido(7)" class="btn-pildora">7 días</button>
+              <button id="btn-filtro-30d" onclick="ReportesView.filtrarRangoRapido(30)" class="btn-pildora active">30 días</button>
+              <button id="btn-filtro-90d" onclick="ReportesView.filtrarRangoRapido(90)" class="btn-pildora">90 días</button>
+            </div>
+
+            <!-- Selector de Fechas Personalizadas -->
+            <div style="display: flex; align-items: center; gap: 6px; background: #141619; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px;">
+              <span style="font-size: 0.72rem; color: var(--text-muted);">Desde:</span>
+              <input type="date" id="reportes-fecha-desde" class="input-field" style="width: 125px; padding: 4px 6px; font-size: 0.74rem;">
+              <span style="font-size: 0.72rem; color: var(--text-muted);">Hasta:</span>
+              <input type="date" id="reportes-fecha-hasta" class="input-field" style="width: 125px; padding: 4px 6px; font-size: 0.74rem;">
+            </div>
+
+            <button onclick="ReportesView.aplicarFiltrosManuales()" class="btn btn-secondary" style="padding: 7px 12px; font-size: 0.78rem;">
+              <i class="fa-solid fa-filter"></i> Aplicar
+            </button>
+
+            <button onclick="ReportesView.exportarReporte()" class="btn btn-primary" style="padding: 7px 14px; font-size: 0.78rem;">
+              <i class="fa-solid fa-file-arrow-down"></i> Exportar Reporte
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 KPI Cards Gerenciales -->
+        <div class="stats-grid">
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Total Vendido (Ingresos)</span>
+              <div class="stat-icon" style="background: rgba(45, 212, 191, 0.15); color: var(--primary);">
+                <i class="fa-solid fa-dollar-sign"></i>
+              </div>
+            </div>
+            <div class="stat-val" id="rep-kpi-ingresos">$ 0.00</div>
+            <div class="stat-desc">
+              <span id="rep-kpi-ventas" style="color: var(--primary); font-weight: 700;">0 transacciones</span> en el periodo
+            </div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Utilidad Real PEPS</span>
+              <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--success);">
+                <i class="fa-solid fa-chart-line"></i>
+              </div>
+            </div>
+            <div class="stat-val" id="rep-kpi-utilidad" style="color: var(--primary);">$ 0.00</div>
+            <div class="stat-desc">
+              Margen bruto descontando costo real de lotes PEPS
+            </div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Ticket Promedio</span>
+              <div class="stat-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">
+                <i class="fa-solid fa-receipt"></i>
+              </div>
+            </div>
+            <div class="stat-val" id="rep-kpi-ticket">$ 0.00</div>
+            <div class="stat-desc">
+              Promedio por factura | <span id="rep-kpi-unidades" style="color: #38bdf8; font-weight: 700;">0 u.</span> vendidas
+            </div>
+          </div>
+
+          <div class="card-stat">
+            <div class="card-stat-header">
+              <span>Pérdidas por Mermas / Bajas</span>
+              <div class="stat-icon" style="background: rgba(244, 63, 94, 0.15); color: var(--danger);">
+                <i class="fa-solid fa-trash-can"></i>
+              </div>
+            </div>
+            <div class="stat-val" id="rep-kpi-mermas" style="color: var(--danger);">$ 0.00</div>
+            <div class="stat-desc">
+              Costo de productos caducados o dañados
+            </div>
+          </div>
+        </div>
+
+        <!-- Fila de Gráficas: Histórico Diario (8 cols) + Recaudo por Métodos de Pago (4 cols) -->
+        <div style="display: grid; grid-template-columns: 1.7fr 1fr; gap: 20px;">
+          <!-- Curva Diaria de Ventas y Utilidad PEPS -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: #fff;">Evolución Diaria de Ventas y Utilidad PEPS</h4>
+                <p style="font-size: 0.74rem; color: var(--text-muted);">Comparativa diaria de facturación neta vs rentabilidad por costo de lotes</p>
+              </div>
+              <span class="badge" style="background: rgba(45, 212, 191, 0.1); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.25); font-size: 0.72rem;">Serie Temporal</span>
+            </div>
+            <div style="height: 280px; position: relative;">
+              <canvas id="chart-reportes-diario"></canvas>
+            </div>
+          </div>
+
+          <!-- Recaudo por Medio de Pago -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+              <div>
+                <h4 style="font-size: 0.95rem; font-weight: 700; color: #fff;">Distribución por Medio de Pago</h4>
+                <p style="font-size: 0.74rem; color: var(--text-muted);">Participación de Efectivo, Tarjeta y Transferencia</p>
+              </div>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 0.72rem;">Recaudo</span>
+            </div>
+            <div id="rep-metodos-pago-container" style="padding-top: 6px;">
+              <div style="color: var(--text-dim); text-align: center; padding: 30px;">Cargando medios de pago...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla: Ranking de los 5 Productos Más Rentables (PEPS) -->
+        <div class="table-container">
+          <div class="table-header">
+            <div>
+              <h3 style="font-size: 1rem; font-weight: 700; color: #fff;">Top Productos Más Rentables (PEPS)</h3>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Ranking financiero calculado según el costo real de los lotes PEPS consumidos en el periodo</p>
+            </div>
+            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700; font-size: 0.74rem;">
+              <i class="fa-solid fa-trophy"></i> Top 5 Rentabilidad
+            </span>
+          </div>
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 50px; text-align: center;">Pos</th>
+                  <th>Producto</th>
+                  <th>Código de Barras</th>
+                  <th style="text-align: right;">Unidades</th>
+                  <th style="text-align: right;">Ingresos Totales</th>
+                  <th style="text-align: right;">Costo PEPS</th>
+                  <th style="text-align: right;">Utilidad PEPS</th>
+                  <th style="text-align: center;">% Margen Real</th>
+                </tr>
+              </thead>
+              <tbody id="rep-top-productos-body">
+                <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">Cargando ranking de productos...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
     </div>
   </main>
 
@@ -1095,6 +1308,7 @@
   <!-- SCRIPTS MODULARES -->
   <script src="js/app.js"></script>
   <script src="js/dashboard.js"></script>
+  <script src="js/reportes.js"></script>
   <script src="js/pos.js"></script>
   <script src="js/semaforo.js"></script>
   <script src="js/kardex.js"></script>
