@@ -259,15 +259,22 @@ class ReportesController {
         desde = d.toISOString().slice(0, 10);
       }
 
-      // 1. KPIs Generales en el periodo
+      // 1. KPIs Generales en el periodo (Consulta directa a ventas_facturas para evitar duplicación por JOIN)
       const [[kpisVentas]] = await pool.query(
         `SELECT 
-           IFNULL(SUM(vf.total_pagar), 0) AS total_ingresos,
-           COUNT(DISTINCT vf.id_venta) AS cantidad_ventas,
+           IFNULL(SUM(total_pagar), 0) AS total_ingresos,
+           COUNT(id_venta) AS cantidad_ventas
+         FROM ventas_facturas
+         WHERE DATE(fecha_venta) BETWEEN ? AND ?`,
+        [desde, hasta]
+      );
+
+      const [[kpisDetalle]] = await pool.query(
+        `SELECT 
            IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad_neta_peps,
            IFNULL(SUM(dv.cantidad), 0) AS unidades_vendidas
-         FROM ventas_facturas vf
-         LEFT JOIN detalle_ventas dv ON vf.id_venta = dv.id_venta
+         FROM detalle_ventas dv
+         JOIN ventas_facturas vf ON dv.id_venta = vf.id_venta
          WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?`,
         [desde, hasta]
       );
@@ -280,58 +287,94 @@ class ReportesController {
         [desde, hasta]
       );
 
-      const totalIngresos = Number(kpisVentas?.total_ingresos || 0);
+      const totalIngresos = Number(Number(kpisVentas?.total_ingresos || 0).toFixed(2));
       const cantVentas = Number(kpisVentas?.cantidad_ventas || 0);
-      const utilidadPeps = Number(kpisVentas?.utilidad_neta_peps || 0);
-      const unidadesVendidas = Number(kpisVentas?.unidades_vendidas || 0);
-      const totalMermas = Number(kpisMermas?.total_mermas || 0);
+      const utilidadPeps = Number(Number(kpisDetalle?.utilidad_neta_peps || 0).toFixed(2));
+      const unidadesVendidas = Number(kpisDetalle?.unidades_vendidas || 0);
+      const totalMermas = Number(Number(kpisMermas?.total_mermas || 0).toFixed(2));
       const ticketPromedio = cantVentas > 0 ? Number((totalIngresos / cantVentas).toFixed(2)) : 0;
 
-      // 2. Serie diaria en el periodo
+      // 2. Serie diaria en el periodo (Agrupación limpia de ingresos y utilidad sin duplicidad)
       const [serieDiariaRaw] = await pool.query(
         `SELECT 
-           DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d') AS fecha,
-           IFNULL(SUM(vf.total_pagar), 0) AS ingresos,
-           IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad,
-           COUNT(DISTINCT vf.id_venta) AS transacciones
-         FROM ventas_facturas vf
-         LEFT JOIN detalle_ventas dv ON vf.id_venta = dv.id_venta
-         WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?
-         GROUP BY DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d')
-         ORDER BY fecha ASC`,
-        [desde, hasta]
+           v.fecha,
+           v.ingresos,
+           v.transacciones,
+           IFNULL(u.utilidad, 0) AS utilidad
+         FROM (
+           SELECT 
+             DATE_FORMAT(fecha_venta, '%Y-%m-%d') AS fecha,
+             IFNULL(SUM(total_pagar), 0) AS ingresos,
+             COUNT(id_venta) AS transacciones
+           FROM ventas_facturas
+           WHERE DATE(fecha_venta) BETWEEN ? AND ?
+           GROUP BY DATE_FORMAT(fecha_venta, '%Y-%m-%d')
+         ) v
+         LEFT JOIN (
+           SELECT 
+             DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d') AS fecha,
+             IFNULL(SUM(dv.subtotal_linea - (dv.cantidad * dv.costo_unitario_compra)), 0) AS utilidad
+           FROM detalle_ventas dv
+           JOIN ventas_facturas vf ON dv.id_venta = vf.id_venta
+           WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?
+           GROUP BY DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d')
+         ) u ON v.fecha = u.fecha
+         ORDER BY v.fecha ASC`,
+        [desde, hasta, desde, hasta]
       );
 
       const serieDiaria = serieDiariaRaw.map(r => ({
         fecha: r.fecha,
-        ingresos: Number(r.ingresos || 0),
-        utilidad: Number(r.utilidad || 0),
+        ingresos: Number(Number(r.ingresos || 0).toFixed(2)),
+        utilidad: Number(Number(r.utilidad || 0).toFixed(2)),
         transacciones: Number(r.transacciones || 0)
       }));
 
-      // 3. Por Método de Pago
+      // 3. Por Método de Pago (Misma tabla ventas_facturas, mismo filtro WHERE y misma columna total_pagar)
       const [metodosRaw] = await pool.query(
         `SELECT 
-           IFNULL(vf.metodo_pago, 'Efectivo') AS metodo_pago,
-           IFNULL(SUM(vf.total_pagar), 0) AS total,
-           COUNT(vf.id_venta) AS transacciones
-         FROM ventas_facturas vf
-         WHERE DATE(vf.fecha_venta) BETWEEN ? AND ?
-         GROUP BY vf.metodo_pago`,
+           TRIM(IFNULL(metodo_pago, 'Efectivo')) AS metodo_pago,
+           IFNULL(SUM(total_pagar), 0) AS total,
+           COUNT(id_venta) AS transacciones
+         FROM ventas_facturas
+         WHERE DATE(fecha_venta) BETWEEN ? AND ?
+         GROUP BY TRIM(IFNULL(metodo_pago, 'Efectivo'))`,
         [desde, hasta]
       );
 
+      // Normalizar nombres con TRIM / LOWER para clasificar todas las operaciones
+      const acumulador = {
+        'Efectivo': { total: 0, transacciones: 0 },
+        'Tarjeta': { total: 0, transacciones: 0 },
+        'Transferencia': { total: 0, transacciones: 0 }
+      };
+
+      for (const item of metodosRaw) {
+        const metodoLower = String(item.metodo_pago || '').trim().toLowerCase();
+        const monto = Number(item.total || 0);
+        const trans = Number(item.transacciones || 0);
+
+        if (metodoLower.includes('tarjeta') || metodoLower.includes('debito') || metodoLower.includes('credito') || metodoLower.includes('card')) {
+          acumulador['Tarjeta'].total += monto;
+          acumulador['Tarjeta'].transacciones += trans;
+        } else if (metodoLower.includes('transfer') || metodoLower.includes('transf') || metodoLower.includes('nequi') || metodoLower.includes('daviplata') || metodoLower.includes('banc')) {
+          acumulador['Transferencia'].total += monto;
+          acumulador['Transferencia'].transacciones += trans;
+        } else {
+          acumulador['Efectivo'].total += monto;
+          acumulador['Efectivo'].transacciones += trans;
+        }
+      }
+
       const metodosEstandar = ['Efectivo', 'Tarjeta', 'Transferencia'];
       const porMetodoPago = metodosEstandar.map(m => {
-        const item = metodosRaw.find(x => x.metodo_pago === m);
-        const total = item ? Number(item.total || 0) : 0;
-        const transacciones = item ? Number(item.transacciones || 0) : 0;
+        const total = Number(acumulador[m].total.toFixed(2));
         const porcentaje = totalIngresos > 0 ? Number(((total / totalIngresos) * 100).toFixed(1)) : 0;
         return {
           metodo_pago: m,
           total,
           porcentaje,
-          transacciones
+          transacciones: acumulador[m].transacciones
         };
       });
 
