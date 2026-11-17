@@ -105,6 +105,27 @@ const App = {
     }
   },
 
+  // Control de Drawer Lateral (Móvil / Tablet)
+  toggleSidebar() {
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (!sidebar) return;
+    const estaAbierto = sidebar.classList.contains('open');
+    if (estaAbierto) {
+      this.cerrarSidebar();
+    } else {
+      sidebar.classList.add('open');
+      if (backdrop) backdrop.classList.remove('hidden');
+    }
+  },
+
+  cerrarSidebar() {
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar) sidebar.classList.remove('open');
+    if (backdrop) backdrop.classList.add('hidden');
+  },
+
   // Enrutamiento de Vistas
   configurarNavegacion() {
     const botonesNav = document.querySelectorAll('.nav-btn[data-vista]');
@@ -114,9 +135,23 @@ const App = {
         if (target) this.cambiarVista(target);
       });
     });
+
+    // Cerrar drawer con tecla Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.cerrarSidebar();
+    });
+
+    // Cerrar drawer al redimensionar a desktop
+    window.addEventListener('resize', () => {
+      if (window.innerWidth >= 1024) this.cerrarSidebar();
+    });
   },
 
   cambiarVista(vista) {
+    if (window.innerWidth < 1024) {
+      this.cerrarSidebar();
+    }
+
     if (vista === 'mermas') vista = 'novedades';
 
     // Protección RBAC estricta en el cambio de vista
@@ -239,6 +274,9 @@ const App = {
 
   // ================= CIERRE Y CUADRE DE CAJA =================
   async abrirArqueoCaja() {
+    if (window.innerWidth < 1024) {
+      this.cerrarSidebar();
+    }
     if (!this.usuario) return;
 
     try {

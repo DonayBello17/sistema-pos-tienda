@@ -79,7 +79,7 @@ const SemaforoView = {
             </span>
           </td>
           <td>
-            <button onclick="SemaforoView.abrirModalBaja(${l.id_lote})" class="btn btn-danger" style="padding: 6px 12px; font-size: 0.78rem;">
+            <button onclick="SemaforoView.abrirModalBaja(${l.id_lote})" class="btn btn-danger" style="padding: 4px 10px; font-size: 0.74rem; white-space: nowrap;">
               <i class="fa-solid fa-trash-can"></i> Descartar
             </button>
           </td>

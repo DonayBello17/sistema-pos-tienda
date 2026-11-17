@@ -13,8 +13,11 @@
   <!-- TOAST NOTIFICACIONES FLOTANTES -->
   <div id="toast-container"></div>
 
+  <!-- BACKDROP OVERLAY PARA MÓVIL Y TABLET -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop hidden" onclick="App.cerrarSidebar()"></div>
+
   <!-- SIDEBAR LATERAL -->
-  <aside>
+  <aside id="app-sidebar">
     <div>
       <div class="brand">
         <div class="brand-icon"><i class="fa-solid fa-cube"></i></div>
@@ -91,11 +94,16 @@
   <!-- CONTENIDO PRINCIPAL -->
   <main>
     <header>
-      <div>
-        <h2 id="titulo-seccion" style="font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; color: #fff;">Resumen General del Negocio</h2>
-        <p id="subtitulo-seccion" style="font-size: 0.76rem; color: var(--text-muted);">Métricas de Ventas, Inventario y Productos</p>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button id="btn-toggle-sidebar" class="btn-hamburger" onclick="App.toggleSidebar()" title="Abrir Menú" aria-label="Abrir Menú">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div>
+          <h2 id="titulo-seccion" style="font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; color: #fff; line-height: 1.2;">Resumen General del Negocio</h2>
+          <p id="subtitulo-seccion" style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">Métricas de Ventas, Inventario y Productos</p>
+        </div>
       </div>
-      <div style="display: flex; gap: 10px; align-items: center;">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <div class="topbar-date-pill">
           <i class="fa-regular fa-calendar" style="color: var(--primary);"></i>
           <span id="topbar-fecha-texto">17 DE NOV DE 2026</span>
@@ -103,19 +111,19 @@
         <span class="badge" style="background: rgba(45, 212, 191, 0.12); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); font-family: monospace; font-size: 0.74rem;">
           <i class="fa-solid fa-cloud"></i> TiDB Cloud
         </span>
-        <button onclick="NovedadesView.abrirModal()" class="btn btn-secondary" style="padding: 7px 12px; font-size: 0.78rem;">
+        <button onclick="NovedadesView.abrirModal()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.76rem;">
           <i class="fa-solid fa-arrows-rotate" style="color: #38bdf8;"></i> Devolución
         </button>
-        <button onclick="App.abrirArqueoCaja()" class="btn btn-secondary" style="padding: 7px 12px; font-size: 0.78rem;">
+        <button onclick="App.abrirArqueoCaja()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.76rem;">
           <i class="fa-solid fa-vault" style="color: var(--warning);"></i> Cierre Caja
         </button>
-        <button onclick="App.recargarTodo()" class="btn btn-secondary" style="padding: 7px 10px; font-size: 0.78rem;" title="Actualizar datos">
+        <button onclick="App.recargarTodo()" class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.76rem;" title="Actualizar datos">
           <i class="fa-solid fa-rotate"></i>
         </button>
       </div>
     </header>
 
-    <div class="content">
+    <div class="content" style="max-width: 1600px; width: 100%; margin: 0 auto;">
 
       <!-- ================= 1. VISTA PANEL DE CONTROL (DASHBOARD) ================= -->
       <section id="vista-dashboard" style="display: flex; flex-direction: column; gap: 24px;">
@@ -182,7 +190,7 @@
         </div>
 
         <!-- Gráficas del Dashboard: Ingresos últimos 30 días + Horas pico de ventas -->
-        <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px;">
+        <div class="dashboard-charts-grid">
           <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
               <div>
@@ -861,7 +869,7 @@
         </div>
 
         <!-- Fila de Gráficas: Histórico Diario (8 cols) + Recaudo por Métodos de Pago (4 cols) -->
-        <div style="display: grid; grid-template-columns: 1.7fr 1fr; gap: 20px;">
+        <div class="reportes-charts-grid">
           <!-- Curva Diaria de Ventas y Utilidad PEPS -->
           <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 22px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">

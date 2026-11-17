@@ -197,18 +197,18 @@ function renderTablaKardexFiltrada(lista) {
       const costoPeps = Number(m.costo_total || 0);
       const utilidad = Number(m.utilidad_neta !== null && m.utilidad_neta !== undefined ? m.utilidad_neta : (ingresoVenta - costoPeps));
 
-      ingresoVentaHtml = `<strong style="color: #fff; font-family: monospace;">${formatoMoneda(ingresoVenta)}</strong>`;
+      ingresoVentaHtml = `<strong style="color: #fff; font-family: monospace; white-space: nowrap;">${formatoMoneda(ingresoVenta)}</strong>`;
 
       if (utilidad >= 0) {
         gananciaPerdidaHtml = `
-          <span style="color: var(--success); font-weight: 800; font-size: 0.84rem; font-family: monospace; display: inline-flex; align-items: center; gap: 4px;">
-            <i class="fa-solid fa-arrow-trend-up"></i> +${formatoMoneda(utilidad)} <small style="font-size: 0.72rem; opacity: 0.85;">Ganancia</small>
+          <span style="color: var(--success); font-weight: 800; font-size: 0.78rem; font-family: monospace; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;">
+            <i class="fa-solid fa-arrow-trend-up"></i> +${formatoMoneda(utilidad)}
           </span>
         `;
       } else {
         gananciaPerdidaHtml = `
-          <span style="color: var(--danger); font-weight: 800; font-size: 0.84rem; font-family: monospace; display: inline-flex; align-items: center; gap: 4px;">
-            <i class="fa-solid fa-arrow-trend-down"></i> -${formatoMoneda(Math.abs(utilidad))} <small style="font-size: 0.72rem; opacity: 0.85;">Pérdida</small>
+          <span style="color: var(--danger); font-weight: 800; font-size: 0.78rem; font-family: monospace; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;">
+            <i class="fa-solid fa-arrow-trend-down"></i> -${formatoMoneda(Math.abs(utilidad))}
           </span>
         `;
       }
@@ -216,28 +216,28 @@ function renderTablaKardexFiltrada(lista) {
 
     return `
       <tr>
-        <td style="font-size: 0.78rem; color: var(--text-muted); font-family: monospace;">${m.fecha || ''}</td>
-        <td>
-          <strong>${m.producto || ''}</strong><br>
-          <small style="color: var(--text-dim); font-family: monospace;">${m.codigo_barras || ''}</small>
+        <td style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace; white-space: nowrap;">${m.fecha ? m.fecha.substring(0, 16) : ''}</td>
+        <td style="line-height: 1.2;">
+          <strong style="font-size: 0.80rem; color: #fff;">${m.producto || ''}</strong><br>
+          <small style="color: var(--text-dim); font-size: 0.69rem; font-family: monospace;">${m.codigo_barras || ''}</small>
         </td>
-        <td><code style="color: var(--primary);">${m.numero_lote || 'N/A'}</code></td>
+        <td><code style="color: var(--primary); font-size: 0.74rem;">${m.numero_lote || 'N/A'}</code></td>
         <td>${badgeTipo}</td>
-        <td style="font-weight: 800; color: ${colorCant}; font-size: 0.95rem;">
+        <td style="font-weight: 800; color: ${colorCant}; font-size: 0.82rem; white-space: nowrap;">
           ${signo}${Math.abs(m.cantidad || 0)} u.
         </td>
-        <td>${formatoMoneda(m.costo_unitario)}</td>
-        <td style="font-weight: bold; color: #fff;">${formatoMoneda(m.costo_total)}</td>
-        <td>${ingresoVentaHtml}</td>
-        <td>${gananciaPerdidaHtml}</td>
-        <td>
-          <span style="font-weight: bold; background: rgba(55,65,81,0.5); padding: 3px 8px; border-radius: 6px;">
+        <td style="white-space: nowrap; font-size: 0.78rem;">${formatoMoneda(m.costo_unitario)}</td>
+        <td style="font-weight: bold; color: #fff; white-space: nowrap; font-size: 0.78rem;">${formatoMoneda(m.costo_total)}</td>
+        <td style="white-space: nowrap;">${ingresoVentaHtml}</td>
+        <td style="white-space: nowrap;">${gananciaPerdidaHtml}</td>
+        <td style="white-space: nowrap;">
+          <span style="font-weight: 700; background: rgba(55,65,81,0.5); padding: 2px 6px; border-radius: 4px; font-size: 0.74rem;">
             ${m.saldo_stock_resultante !== undefined ? m.saldo_stock_resultante + ' u.' : '-'}
           </span>
         </td>
-        <td style="font-size: 0.78rem; color: var(--text-muted); max-width: 220px;">
+        <td style="font-size: 0.74rem; color: var(--text-muted); max-width: 180px; line-height: 1.2;">
           ${m.motivo_observacion || '-'}<br>
-          <small style="color: var(--text-dim);">Por: ${m.usuario || 'Sistema'}</small>
+          <small style="color: var(--text-dim); font-size: 0.68rem;">Por: ${m.usuario || 'Sistema'}</small>
         </td>
       </tr>
     `;

@@ -299,10 +299,10 @@ function renderTablaNovedadesFiltrada(lista) {
       dineroPerdidoHTML = `<span style="color: var(--success); font-size: 0.82rem; font-family: monospace;">$ 0.00 (Reingreso)</span>`;
     } else if (m.tipo_movimiento === 'Salida por Baja de Caducidad') {
       badgeTipo = `<span class="badge badge-danger"><i class="fa-solid fa-calendar-xmark"></i> Baja Caducidad</span>`;
-      dineroPerdidoHTML = `<span style="font-weight: 800; color: var(--danger); font-size: 0.95rem; font-family: monospace;">${formatoMoneda(m.costo_total)}</span>`;
+      dineroPerdidoHTML = `<span style="font-weight: 800; color: var(--danger); font-size: 0.80rem; font-family: monospace; white-space: nowrap;">${formatoMoneda(m.costo_total)}</span>`;
     } else {
-      badgeTipo = `<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation"></i> Salida por Daño</span>`;
-      dineroPerdidoHTML = `<span style="font-weight: 800; color: var(--warning); font-size: 0.95rem; font-family: monospace;">${formatoMoneda(m.costo_total)}</span>`;
+      badgeTipo = `<span class="badge badge-warning"><i class="fa-solid fa-triangle-exclamation"></i> Salida Daño</span>`;
+      dineroPerdidoHTML = `<span style="font-weight: 800; color: var(--warning); font-size: 0.80rem; font-family: monospace; white-space: nowrap;">${formatoMoneda(m.costo_total)}</span>`;
     }
 
     const esEntrada = m.tipo_movimiento && m.tipo_movimiento.startsWith('Entrada');
@@ -311,24 +311,24 @@ function renderTablaNovedadesFiltrada(lista) {
 
     return `
       <tr>
-        <td style="font-size: 0.78rem; color: var(--text-muted); font-family: monospace;">${m.fecha || ''}</td>
-        <td>
-          <strong>${m.producto || ''}</strong><br>
-          <small style="color: var(--text-dim); font-family: monospace;">${m.codigo_barras || ''}</small>
+        <td style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace; white-space: nowrap;">${m.fecha ? m.fecha.substring(0, 16) : ''}</td>
+        <td style="line-height: 1.2;">
+          <strong style="font-size: 0.80rem; color: #fff;">${m.producto || ''}</strong><br>
+          <small style="color: var(--text-dim); font-size: 0.69rem; font-family: monospace;">${m.codigo_barras || ''}</small>
         </td>
-        <td><code style="color: var(--primary);">${m.numero_lote || 'N/A'}</code></td>
+        <td><code style="color: var(--primary); font-size: 0.74rem;">${m.numero_lote || 'N/A'}</code></td>
         <td>${badgeTipo}</td>
-        <td style="font-weight: 800; color: ${colorCant}; font-size: 0.95rem;">
+        <td style="font-weight: 800; color: ${colorCant}; font-size: 0.82rem; white-space: nowrap;">
           ${signo}${Math.abs(m.cantidad || 0)} u.
         </td>
-        <td>${formatoMoneda(m.costo_unitario)}</td>
-        <td>${dineroPerdidoHTML}</td>
-        <td style="font-size: 0.78rem; color: var(--text-muted); max-width: 220px;">
+        <td style="white-space: nowrap; font-size: 0.78rem;">${formatoMoneda(m.costo_unitario)}</td>
+        <td style="white-space: nowrap;">${dineroPerdidoHTML}</td>
+        <td style="font-size: 0.74rem; color: var(--text-muted); max-width: 180px; line-height: 1.2;">
           ${m.motivo_observacion || '-'}<br>
-          <small style="color: var(--text-dim);">Responsable: ${m.usuario || 'Sistema'}</small>
+          <small style="color: var(--text-dim); font-size: 0.68rem;">Responsable: ${m.usuario || 'Sistema'}</small>
         </td>
-        <td style="font-size: 0.8rem; color: #fff;">
-          <i class="fa-solid fa-user-shield" style="color: var(--primary); font-size: 0.75rem;"></i> ${m.usuario || 'Sistema'}
+        <td style="font-size: 0.75rem; color: #fff; white-space: nowrap;">
+          <i class="fa-solid fa-user-shield" style="color: var(--primary); font-size: 0.70rem;"></i> ${m.usuario || 'Sistema'}
         </td>
       </tr>
     `;

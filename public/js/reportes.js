@@ -293,31 +293,31 @@ const ReportesView = {
 
       return `
         <tr>
-          <td style="text-align: center; width: 44px;">
-            <span style="display: inline-flex; width: 26px; height: 26px; border-radius: 50%; align-items: center; justify-content: center; font-size: 0.76rem; ${badgeRankClass}">
+          <td style="text-align: center; width: 38px;">
+            <span style="display: inline-flex; width: 22px; height: 22px; border-radius: 50%; align-items: center; justify-content: center; font-size: 0.70rem; ${badgeRankClass}">
               #${idx + 1}
             </span>
           </td>
           <td>
-            <strong style="color: #fff; font-size: 0.88rem;">${p.nombre}</strong>
+            <strong style="color: #fff; font-size: 0.80rem;">${p.nombre}</strong>
           </td>
           <td>
-            <code style="color: #2DD4BF; font-size: 0.75rem; font-weight: 600;">${p.codigo_barras}</code>
+            <code style="color: #2DD4BF; font-size: 0.72rem; font-weight: 600;">${p.codigo_barras}</code>
           </td>
-          <td style="text-align: right; font-weight: 700; color: #fff;">
+          <td style="text-align: right; font-weight: 700; color: #fff; white-space: nowrap;">
             ${p.unidades_vendidas.toLocaleString('es-CO')} u.
           </td>
-          <td style="text-align: right; font-weight: 600; color: #E5E7EB;">
+          <td style="text-align: right; font-weight: 600; color: #E5E7EB; white-space: nowrap;">
             ${App.formatoMoneda(p.ingresos_totales)}
           </td>
-          <td style="text-align: right; color: var(--text-dim); font-size: 0.82rem;">
+          <td style="text-align: right; color: var(--text-dim); font-size: 0.78rem; white-space: nowrap;">
             ${App.formatoMoneda(p.costo_peps)}
           </td>
-          <td style="text-align: right; font-weight: 800; color: #2DD4BF;">
+          <td style="text-align: right; font-weight: 800; color: #2DD4BF; white-space: nowrap;">
             +${App.formatoMoneda(p.utilidad_peps)}
           </td>
-          <td style="text-align: center;">
-            <span class="badge" style="background: rgba(45, 212, 191, 0.12); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); font-weight: 700; font-size: 0.72rem;">
+          <td style="text-align: center; white-space: nowrap;">
+            <span class="badge" style="background: rgba(45, 212, 191, 0.12); color: #2DD4BF; border: 1px solid rgba(45, 212, 191, 0.3); font-weight: 700; font-size: 0.68rem; padding: 2px 6px;">
               ${p.margen_promedio}%
             </span>
           </td>
