@@ -235,6 +235,106 @@ class VentasController {
       res.status(500).json({ ok: false, error: 'Error al consultar ventas de hoy: ' + err.message });
     }
   }
+
+  static async consultarFacturaPublica(req, res) {
+    const { codigo } = req.params;
+    if (!codigo) {
+      return res.status(400).json({ ok: false, error: 'Código de factura requerido.' });
+    }
+
+    try {
+      const [[factura]] = await pool.query(
+        `SELECT vf.id_venta,
+                vf.numero_factura,
+                DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d') AS fecha,
+                DATE_FORMAT(vf.fecha_venta, '%H:%i:%s') AS hora,
+                DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d %H:%i:%s') AS fecha_completa,
+                vf.subtotal_base,
+                vf.total_iva_19,
+                vf.total_iva_5,
+                vf.descuento,
+                vf.total_pagar,
+                TRIM(IFNULL(vf.metodo_pago, 'Efectivo')) AS metodo_pago,
+                IFNULL(vf.tipo_comprobante, 'Factura Electrónica de Venta') AS tipo_comprobante,
+                vf.cufe,
+                IFNULL(c.nombre_completo, 'Consumidor Final') AS cliente,
+                IFNULL(c.cedula_nit, '222222222222') AS cliente_nit,
+                IFNULL(c.correo, '') AS cliente_correo,
+                IFNULL(c.direccion, '') AS cliente_direccion,
+                IFNULL(u.nombre_completo, 'Caja Principal') AS cajero
+         FROM ventas_facturas vf
+         LEFT JOIN clientes c ON vf.id_cliente = c.id_cliente
+         LEFT JOIN usuarios u ON vf.id_usuario = u.id_usuario
+         WHERE vf.numero_factura = ? OR vf.id_venta = ?`,
+        [codigo.trim(), isNaN(codigo) ? -1 : parseInt(codigo, 10)]
+      );
+
+      if (!factura) {
+        return res.status(404).json({ ok: false, error: 'Factura no encontrada o código inválido.' });
+      }
+
+      const [items] = await pool.query(
+        `SELECT p.nombre AS producto,
+                p.codigo_barras,
+                SUM(dv.cantidad) AS cantidad,
+                dv.precio_unitario_base AS precio_unitario,
+                dv.tarifa_iva_aplicada AS tarifa_iva,
+                SUM(dv.valor_iva_linea) AS iva,
+                SUM(dv.subtotal_linea) AS subtotal
+         FROM detalle_ventas dv
+         JOIN productos p ON dv.id_producto = p.id_producto
+         WHERE dv.id_venta = ?
+         GROUP BY p.id_producto, p.nombre, p.codigo_barras, dv.precio_unitario_base, dv.tarifa_iva_aplicada
+         ORDER BY MIN(dv.id_detalle_venta) ASC`,
+        [factura.id_venta]
+      );
+
+      const subtotalBase = Number(factura.subtotal_base || 0);
+      const iva19 = Number(factura.total_iva_19 || 0);
+      const iva5 = Number(factura.total_iva_5 || 0);
+      const descuento = Number(factura.descuento || 0);
+      const totalPagar = Number(factura.total_pagar || 0);
+      const base0 = (iva19 === 0 && iva5 === 0) ? subtotalBase : 0;
+
+      res.json({
+        ok: true,
+        factura: {
+          id_venta: factura.id_venta,
+          numero_factura: factura.numero_factura,
+          resolucion_dian: 'Resolución DIAN No. 18764000001 de 2026',
+          fecha: factura.fecha,
+          hora: factura.hora,
+          fecha_completa: factura.fecha_completa,
+          cajero: factura.cajero,
+          cliente: factura.cliente,
+          cliente_nit: factura.cliente_nit,
+          cliente_correo: factura.cliente_correo,
+          cliente_direccion: factura.cliente_direccion,
+          metodo_pago: factura.metodo_pago,
+          tipo_comprobante: factura.tipo_comprobante,
+          cufe: factura.cufe,
+          subtotal_base: subtotalBase,
+          iva_19: iva19,
+          iva_5: iva5,
+          base_0: base0,
+          descuento: descuento,
+          total_pagar: totalPagar
+        },
+        items: items.map(it => ({
+          producto: it.producto,
+          codigo_barras: it.codigo_barras,
+          cantidad: Number(it.cantidad || 0),
+          precio_unitario: Number(it.precio_unitario || 0),
+          tarifa_iva: Number(it.tarifa_iva || 0),
+          iva: Number(it.iva || 0),
+          subtotal: Number(it.subtotal || 0)
+        }))
+      });
+    } catch (err) {
+      console.error('Error al consultar factura pública:', err);
+      res.status(500).json({ ok: false, error: 'Error interno al consultar factura: ' + err.message });
+    }
+  }
 }
 
 module.exports = VentasController;

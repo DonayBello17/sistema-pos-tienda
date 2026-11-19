@@ -864,16 +864,62 @@ select.input-field {
 .toast-warning { border-left: 4px solid var(--warning); }
 .toast-info { border-left: 4px solid var(--primary); }
 
-/* FACTURA TICKET DIAN */
+/* FACTURA TICKET DIAN (ALTO CONTRASTE) */
 .ticket-print-box {
-  background: #fff;
-  color: #111;
+  background: #ffffff !important;
+  color: #0f172a !important;
   padding: 24px;
   border-radius: 10px;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.82rem;
   line-height: 1.4;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.ticket-print-box p,
+.ticket-print-box span,
+.ticket-print-box div,
+.ticket-print-box h2,
+.ticket-print-box h3,
+.ticket-print-box strong,
+.ticket-print-box b,
+.ticket-print-box small {
+  color: #0f172a !important;
+}
+
+.ticket-print-box table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background: #ffffff !important;
+  margin-bottom: 12px !important;
+}
+
+.ticket-print-box thead tr,
+.ticket-print-box th {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  padding: 6px 8px !important;
+  font-size: 0.74rem !important;
+  font-weight: 700 !important;
+  border: none !important;
+  text-transform: uppercase !important;
+}
+
+.ticket-print-box tbody tr {
+  background: #ffffff !important;
+  border-bottom: 1px dashed #cbd5e1 !important;
+}
+
+.ticket-print-box tbody td {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  padding: 6px 8px !important;
+  font-size: 0.78rem !important;
+  border-bottom: 1px dashed #cbd5e1 !important;
+}
+
+.ticket-print-box tbody tr:hover {
+  background-color: #f8fafc !important;
 }
 
 .ticket-header {
@@ -884,14 +930,19 @@ select.input-field {
 }
 
 .ticket-cufe-box {
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
   padding: 8px;
   border-radius: 6px;
   font-size: 0.68rem;
   word-break: break-all;
   margin: 12px 0;
-  color: #1f2937;
+  color: #1e293b !important;
+}
+
+.ticket-cufe-box span,
+.ticket-cufe-box strong {
+  color: #1e293b !important;
 }
 
 .ticket-qr-container {

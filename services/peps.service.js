@@ -225,6 +225,8 @@ class PepsService {
           costo_unitario_compra: Number(lote.costo_unitario),
           costo_total_peps: Number(costoTotalTramo.toFixed(2)),
           precio_base: Number(prod.precio_base),
+          tarifa_iva: Number(prod.tarifa_iva || 0),
+          iva: Number(valorIvaTramo.toFixed(2)),
           subtotal: Number(subtotalTramo.toFixed(2)),
           utilidad_tramo: Number(utilidadTramo.toFixed(2))
         });

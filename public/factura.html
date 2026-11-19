@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Factura Electrónica de Venta | Consulta Pública DIAN</title>
+  <!-- Google Fonts & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --bg-body: #f1f5f9;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border-color: #cbd5e1;
+      --header-bg: #1e293b;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* BARRA SUPERIOR DE ACCIONES */
+    .top-action-bar {
+      width: 100%;
+      max-width: 540px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-primary {
+      background: #1e293b;
+      color: #ffffff;
+      border-color: #1e293b;
+    }
+
+    .btn-primary:hover {
+      background: #0f172a;
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #f8fafc;
+    }
+
+    /* CONTENEDOR PRINCIPAL: RECIBO / TIRILLA */
+    .receipt-card {
+      width: 100%;
+      max-width: 540px;
+      background: var(--card-bg);
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+      padding: 26px 24px;
+      font-family: 'Courier Prime', Courier, monospace;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .receipt-header {
+      text-align: center;
+      border-bottom: 1px dashed var(--border-color);
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+    }
+
+    .business-title {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: 0.5px;
+      margin-bottom: 3px;
+    }
+
+    .badge-validado {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      margin-top: 8px;
+    }
+
+    .invoice-tag {
+      margin-top: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: inline-block;
+    }
+
+    .invoice-number {
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--text-main);
+      letter-spacing: 1px;
+    }
+
+    .info-grid {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.78rem;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .info-label {
+      color: var(--text-muted);
+    }
+
+    .info-val {
+      color: var(--text-main);
+      font-weight: 700;
+      text-align: right;
+    }
+
+    /* TABLA DE PRODUCTOS DE ALTO CONTRASTE */
+    .receipt-table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      margin-bottom: 16px !important;
+      background: #ffffff !important;
+      border: 1px solid var(--header-bg);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .receipt-table thead tr {
+      background-color: var(--header-bg) !important;
+      color: #ffffff !important;
+    }
+
+    .receipt-table th {
+      padding: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #ffffff !important;
+      background-color: var(--header-bg) !important;
+      border: none;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .receipt-table tbody tr {
+      background-color: #ffffff !important;
+      border-bottom: 1px dashed var(--border-color);
+    }
+
+    .receipt-table td {
+      padding: 7px 8px;
+      color: var(--text-main) !important;
+      font-size: 0.78rem;
+      background-color: #ffffff !important;
+    }
+
+    /* TOTALES */
+    .totals-box {
+      border-top: 1px dashed var(--border-color);
+      padding-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 0.82rem;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+
+    .total-grand {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.2rem;
+      font-weight: 900;
+      color: var(--text-main);
+      border-top: 2px solid var(--header-bg);
+      padding-top: 8px;
+      margin-top: 6px;
+    }
+
+    .cufe-container {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 16px;
+      font-size: 0.66rem;
+      word-break: break-all;
+      color: var(--text-main);
+    }
+
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border-color);
+      text-align: center;
+    }
+
+    .qr-box {
+      background: #ffffff;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    /* ESTADOS */
+    .loading-state, .error-state {
+      width: 100%;
+      max-width: 540px;
+      background: #ffffff;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* FORMATO IMPRESIÓN LIMPIA */
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+      }
+      .top-action-bar, footer {
+        display: none !important;
+      }
+      .receipt-card {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ACCIONES SUPERIORES -->
+  <div class="top-action-bar" id="top-bar">
+    <a href="/" class="btn-action btn-secondary">
+      <i class="fa-solid fa-arrow-left"></i> Ir al Sistema
+    </a>
+    <div style="display: flex; gap: 8px;">
+      <button onclick="copiarEnlace()" class="btn-action btn-secondary" title="Copiar enlace de esta factura">
+        <i class="fa-solid fa-link"></i> Compartir
+      </button>
+      <button onclick="window.print()" class="btn-action btn-primary">
+        <i class="fa-solid fa-print"></i> Imprimir Tirilla
+      </button>
+    </div>
+  </div>
+
+  <!-- ESTADO CARGANDO -->
+  <div id="estado-cargando" class="loading-state">
+    <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--header-bg); margin-bottom: 12px;"></i>
+    <h3 style="font-size: 1rem; color: var(--text-main);">Consultando Factura Electrónica...</h3>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Validando consecutivo fiscal en base de datos oficial</p>
+  </div>
+
+  <!-- ESTADO ERROR -->
+  <div id="estado-error" class="error-state hidden">
+    <i class="fa-solid fa-circle-exclamation fa-2x" style="color: #ef4444; margin-bottom: 12px;"></i>
+    <h3 style="font-size: 1.05rem; color: var(--text-main);">Factura No Encontrada</h3>
+    <p id="error-mensaje" style="font-size: 0.82rem; color: var(--text-muted); margin: 6px 0 16px;">
+      El código de factura indicado no existe o el enlace es incorrecto.
+    </p>
+    <a href="/" class="btn-action btn-primary" style="display: inline-flex;">
+      <i class="fa-solid fa-store"></i> Ir a la Tienda
+    </a>
+  </div>
+
+  <!-- TARJETA DE FACTURA DIGITAL -->
+  <div id="factura-card" class="receipt-card hidden">
+    <div class="receipt-header">
+      <h1 class="business-title">SISTEMA DE GESTIÓN COMERCIAL</h1>
+      <p style="color: #334155; font-size: 0.76rem;">NIT: 900.987.654-3 | Régimen Común</p>
+      <p style="color: #64748b; font-size: 0.74rem;" id="fac-resolucion">Resolución DIAN No. 18764000001 de 2026</p>
+      
+      <div>
+        <span class="badge-validado">
+          <i class="fa-solid fa-circle-check"></i> Documento Oficial Validado
+        </span>
+      </div>
+
+      <div class="invoice-tag">
+        <span style="font-size: 0.74rem; text-transform: uppercase; color: var(--text-muted); display: block; font-weight: 700;">Factura Electrónica de Venta</span>
+        <span id="fac-numero" class="invoice-number">FAC-00000000</span>
+      </div>
+    </div>
+
+    <!-- DATOS OPERATIVOS -->
+    <div class="info-grid">
+      <div class="info-row">
+        <span class="info-label">Fecha / Hora:</span>
+        <span id="fac-fecha-hora" class="info-val">--/--/---- --:--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Atendido por:</span>
+        <span id="fac-cajero" class="info-val">Caja Principal</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Cliente:</span>
+        <span id="fac-cliente" class="info-val">Consumidor Final</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">NIT / Cédula:</span>
+        <span id="fac-cliente-nit" class="info-val">222222222222</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Forma de Pago:</span>
+        <span id="fac-metodo-pago" class="info-val">Efectivo</span>
+      </div>
+    </div>
+
+    <!-- TABLA DE PRODUCTOS EN ALTO CONTRASTE -->
+    <table class="receipt-table">
+      <thead>
+        <tr>
+          <th style="text-align: left;">Producto</th>
+          <th style="text-align: center;">Cant.</th>
+          <th style="text-align: right;">Precio Unit.</th>
+          <th style="text-align: right;">IVA</th>
+          <th style="text-align: right;">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody id="fac-items-body">
+        <!-- Render dinámico -->
+      </tbody>
+    </table>
+
+    <!-- TOTALES Y LIQUIDACIÓN -->
+    <div class="totals-box">
+      <div class="total-row">
+        <span>Subtotal Gravable:</span>
+        <strong id="fac-subtotal" style="color: var(--text-main);">$ 0.00</strong>
+      </div>
+      <div class="total-row">
+        <span>Total IVA 19%:</span>
+        <strong id="fac-iva19" style="color: var(--text-main);">$ 0.00</strong>
+      </div>
+      <div class="total-row">
+        <span>Total IVA 5%:</span>
+        <strong id="fac-iva5" style="color: var(--text-main);">$ 0.00</strong>
+      </div>
+      <div class="total-row">
+        <span>Exento (0%):</span>
+        <strong id="fac-exento" style="color: var(--text-main);">$ 0.00</strong>
+      </div>
+      <div class="total-row" id="row-descuento" style="display: none; color: #b91c1c;">
+        <span>Descuento aplicado:</span>
+        <strong id="fac-descuento">-$ 0.00</strong>
+      </div>
+      <div class="total-grand">
+        <span>TOTAL PAGADO:</span>
+        <span id="fac-total">$ 0.00</span>
+      </div>
+    </div>
+
+    <!-- CUFE -->
+    <div class="cufe-container">
+      <strong>CUFE:</strong><br>
+      <span id="fac-cufe">--</span>
+    </div>
+
+    <!-- QR CODE OFICIAL -->
+    <div class="qr-container">
+      <div class="qr-box">
+        <div id="fac-qr"></div>
+      </div>
+      <span style="font-size: 0.72rem; color: var(--text-muted); margin-top: 8px;">
+        Comprobante Fiscal Digital Certificado
+      </span>
+    </div>
+  </div>
+
+  <footer style="margin-top: 24px; font-size: 0.75rem; color: #64748b; text-align: center;">
+    Sistema POS & Facturación Electrónica DIAN | © 2026
+  </footer>
+
+  <script>
+    function formatoMoneda(val) {
+      return '$ ' + Number(val || 0).toLocaleString('es-CO', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function copiarEnlace() {
+      navigator.clipboard.writeText(window.location.href);
+      alert('¡Enlace de la factura copiado al portapapeles!');
+    }
+
+    async function cargarFactura() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const codigo = urlParams.get('f') || urlParams.get('codigo') || urlParams.get('id');
+
+      const elCargando = document.getElementById('estado-cargando');
+      const elError = document.getElementById('estado-error');
+      const elCard = document.getElementById('factura-card');
+      const elErrorMsg = document.getElementById('error-mensaje');
+
+      if (!codigo) {
+        elCargando.classList.add('hidden');
+        elErrorMsg.textContent = 'No se especificó ningún número o código de factura en el enlace (?f=FAC-...).';
+        elError.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/public/factura/${encodeURIComponent(codigo)}`);
+        const data = await res.json();
+
+        if (!res.ok || !data.ok || !data.factura) {
+          throw new Error(data.error || 'La factura solicitada no existe en el sistema.');
+        }
+
+        const f = data.factura;
+        const items = data.items || [];
+
+        // Rellenar cabecera y metadatos
+        document.title = `Factura ${f.numero_factura} | Sistema POS`;
+        document.getElementById('fac-numero').textContent = f.numero_factura;
+        document.getElementById('fac-resolucion').textContent = f.resolucion_dian || 'Resolución DIAN No. 18764000001 de 2026';
+        document.getElementById('fac-fecha-hora').textContent = `${f.fecha} ${f.hora || ''}`;
+        document.getElementById('fac-cajero').textContent = f.cajero || 'Caja Principal';
+        document.getElementById('fac-cliente').textContent = f.cliente || 'Consumidor Final';
+        document.getElementById('fac-cliente-nit').textContent = f.cliente_nit || '222222222222';
+        document.getElementById('fac-metodo-pago').textContent = f.metodo_pago || 'Efectivo';
+
+        // Renderizar tabla de items de productos
+        const tbody = document.getElementById('fac-items-body');
+        if (items.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #64748b; padding: 14px;">Sin ítems registrados.</td></tr>';
+        } else {
+          tbody.innerHTML = items.map(it => `
+            <tr>
+              <td style="font-weight: 600;">${it.producto}</td>
+              <td style="text-align: center;">${it.cantidad}</td>
+              <td style="text-align: right; font-family: monospace;">${formatoMoneda(it.precio_unitario)}</td>
+              <td style="text-align: right; font-family: monospace;">${formatoMoneda(it.iva)}</td>
+              <td style="text-align: right; font-weight: 700; font-family: monospace;">${formatoMoneda(it.subtotal)}</td>
+            </tr>
+          `).join('');
+        }
+
+        // Totales fiscales
+        document.getElementById('fac-subtotal').textContent = formatoMoneda(f.subtotal_base);
+        document.getElementById('fac-iva19').textContent = formatoMoneda(f.iva_19);
+        document.getElementById('fac-iva5').textContent = formatoMoneda(f.iva_5);
+        document.getElementById('fac-exento').textContent = formatoMoneda(f.base_0);
+        document.getElementById('fac-total').textContent = formatoMoneda(f.total_pagar);
+
+        if (Number(f.descuento || 0) > 0) {
+          document.getElementById('row-descuento').style.display = 'flex';
+          document.getElementById('fac-descuento').textContent = '-' + formatoMoneda(f.descuento);
+        }
+
+        document.getElementById('fac-cufe').textContent = f.cufe || 'CUFE-NO-DISPONIBLE';
+
+        // Generar QR de la página actual
+        const qrContainer = document.getElementById('fac-qr');
+        qrContainer.innerHTML = '';
+        if (typeof QRCode !== 'undefined') {
+          try {
+            new QRCode(qrContainer, {
+              text: window.location.href,
+              width: 120,
+              height: 120,
+              colorDark: '#000000',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.M : 0
+            });
+          } catch (e) {
+            console.warn('Error al generar QR público:', e);
+          }
+        }
+
+        // Mostrar tarjeta
+        elCargando.classList.add('hidden');
+        elCard.classList.remove('hidden');
+
+      } catch (err) {
+        console.error('Error cargando factura pública:', err);
+        elCargando.classList.add('hidden');
+        elErrorMsg.textContent = err.message || 'No fue posible consultar la información de la factura.';
+        elError.classList.remove('hidden');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarFactura);
+  </script>
+</body>
+</html>

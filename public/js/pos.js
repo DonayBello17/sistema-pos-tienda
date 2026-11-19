@@ -477,160 +477,132 @@ const PosView = {
     const elBody = document.getElementById('factura-ticket-body');
     if (!elModal || !elBody) return;
 
-    const tramosHtml = (venta.tramos || []).map(t => `
-      <tr>
-        <td>${t.nombre}<br><small style="color: #666;">Lote: <b>${t.lote}</b></small></td>
-        <td style="text-align: center;">${t.cantidad}</td>
-        <td style="text-align: right;">${App.formatoMoneda(t.precio_base)}</td>
-        <td style="text-align: right;">${App.formatoMoneda(t.subtotal)}</td>
+    // Agrupar items por producto y precio para una tirilla de cliente limpia sin lotes ni costos internos
+    const itemsAgrupados = {};
+    (venta.tramos || []).forEach(t => {
+      const nom = t.nombre || 'Producto';
+      const precio = Number(t.precio_base || t.precio_unitario || 0);
+      const key = `${nom}_${precio}`;
+      if (!itemsAgrupados[key]) {
+        itemsAgrupados[key] = {
+          nombre: nom,
+          cantidad: 0,
+          precio_base: precio,
+          iva: 0,
+          subtotal: 0
+        };
+      }
+      itemsAgrupados[key].cantidad += Number(t.cantidad || 0);
+      itemsAgrupados[key].iva += Number(t.iva !== undefined ? t.iva : (t.valor_iva !== undefined ? t.valor_iva : 0));
+      itemsAgrupados[key].subtotal += Number(t.subtotal || 0);
+    });
+
+    const listaItems = Object.values(itemsAgrupados);
+
+    const tramosHtml = listaItems.map(it => `
+      <tr style="background: #ffffff !important; border-bottom: 1px dashed #cbd5e1 !important;">
+        <td style="padding: 7px 8px; color: #0F172A !important; font-weight: 600; text-align: left; background: #ffffff !important;">${it.nombre}</td>
+        <td style="padding: 7px 8px; color: #0F172A !important; text-align: center; background: #ffffff !important;">${it.cantidad}</td>
+        <td style="padding: 7px 8px; color: #0F172A !important; text-align: right; font-family: monospace; background: #ffffff !important;">${App.formatoMoneda(it.precio_base)}</td>
+        <td style="padding: 7px 8px; color: #0F172A !important; text-align: right; font-family: monospace; background: #ffffff !important;">${App.formatoMoneda(it.iva)}</td>
+        <td style="padding: 7px 8px; color: #0F172A !important; text-align: right; font-weight: 700; font-family: monospace; background: #ffffff !important;">${App.formatoMoneda(it.subtotal)}</td>
       </tr>
     `).join('');
 
-    const esCajero = (window.App && App.usuario && App.usuario.rol === 'Cajero');
-    const mostrarAuditPEPS = !esCajero && (venta.costo_peps !== undefined || (venta.tramos && venta.tramos.some(t => t.costo_total_peps !== undefined || t.costo_unitario_compra !== undefined)));
-
     elBody.innerHTML = `
-      <div class="ticket-header">
-        <h2 style="font-size: 1.1rem; margin-bottom: 2px;">SISTEMA DE GESTIÓN COMERCIAL</h2>
-        <p>NIT: 900.987.654-3 | Régimen Común</p>
-        <p>Resolución DIAN No. 18764000001 de 2026</p>
-        <p style="font-weight: bold; margin-top: 4px;">FACTURA DE VENTA</p>
-        <h3 style="font-size: 1.05rem; color: #000; letter-spacing: 1px;">${venta.numero_factura}</h3>
+      <div class="ticket-header" style="text-align: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 12px;">
+        <h2 style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin-bottom: 3px; letter-spacing: 0.5px;">SISTEMA DE GESTIÓN COMERCIAL</h2>
+        <p style="font-size: 0.76rem; color: #334155; margin: 1px 0;">NIT: 900.987.654-3 | Régimen Común</p>
+        <p style="font-size: 0.74rem; color: #475569; margin: 1px 0;">Resolución DIAN No. 18764000001 de 2026</p>
+        <div style="margin-top: 8px; padding: 4px 8px; background: #f1f5f9; border-radius: 6px; display: inline-block;">
+          <span style="font-size: 0.78rem; font-weight: 800; color: #0F172A; text-transform: uppercase;">Factura Electrónica de Venta</span>
+          <div style="font-size: 1.05rem; font-weight: 900; color: #0F172A; font-family: monospace; letter-spacing: 1px;">${venta.numero_factura}</div>
+        </div>
       </div>
 
-      <div style="margin-bottom: 12px; font-size: 0.78rem;">
-        <p><b>Fecha/Hora:</b> ${venta.fecha} ${venta.hora}</p>
-        <p><b>Atendido por:</b> ${App.usuario ? App.usuario.nombre : 'Cajero'}</p>
-        <p><b>Cliente:</b> ${venta.cliente} | <b>NIT/CC:</b> ${venta.cedula_nit}</p>
-        <p><b>Forma de Pago:</b> ${venta.metodo_pago}</p>
+      <div style="margin-bottom: 14px; font-size: 0.78rem; color: #0F172A; line-height: 1.5; background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div style="display: flex; justify-content: space-between;"><span style="color: #475569;">Fecha / Hora:</span> <strong style="color: #0F172A;">${venta.fecha} ${venta.hora}</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color: #475569;">Atendido por:</span> <strong style="color: #0F172A;">${App.usuario ? App.usuario.nombre : 'Caja Principal'}</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color: #475569;">Cliente:</span> <strong style="color: #0F172A;">${venta.cliente}</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color: #475569;">NIT / Cédula:</span> <strong style="color: #0F172A;">${venta.cedula_nit}</strong></div>
+        <div style="display: flex; justify-content: space-between;"><span style="color: #475569;">Forma de Pago:</span> <strong style="color: #0F172A;">${venta.metodo_pago}</strong></div>
       </div>
 
-      <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-bottom: 12px;">
+      <!-- TABLA DE PRODUCTOS EN ALTO CONTRASTE -->
+      <table style="width: 100% !important; border-collapse: collapse !important; font-size: 0.78rem; margin-bottom: 14px; background: #ffffff !important; border: 1px solid #1e293b; border-radius: 6px; overflow: hidden;">
         <thead>
-          <tr style="border-bottom: 1px dashed #444; border-top: 1px dashed #444;">
-            <th style="padding: 6px 0; color: #111;">Descripción</th>
-            <th style="padding: 6px 0; text-align: center; color: #111;">Cant.</th>
-            <th style="padding: 6px 0; text-align: right; color: #111;">Base Unit.</th>
-            <th style="padding: 6px 0; text-align: right; color: #111;">Subtotal</th>
+          <tr style="background-color: #1E293B !important; color: #FFFFFF !important;">
+            <th style="padding: 7px 8px; color: #FFFFFF !important; text-align: left; background-color: #1E293B !important; font-weight: 700; font-size: 0.72rem;">Producto</th>
+            <th style="padding: 7px 8px; color: #FFFFFF !important; text-align: center; background-color: #1E293B !important; font-weight: 700; font-size: 0.72rem;">Cant.</th>
+            <th style="padding: 7px 8px; color: #FFFFFF !important; text-align: right; background-color: #1E293B !important; font-weight: 700; font-size: 0.72rem;">Precio Unit.</th>
+            <th style="padding: 7px 8px; color: #FFFFFF !important; text-align: right; background-color: #1E293B !important; font-weight: 700; font-size: 0.72rem;">IVA</th>
+            <th style="padding: 7px 8px; color: #FFFFFF !important; text-align: right; background-color: #1E293B !important; font-weight: 700; font-size: 0.72rem;">Subtotal</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody style="background: #ffffff !important;">
           ${tramosHtml}
         </tbody>
       </table>
 
-      <div style="border-top: 1px dashed #444; padding-top: 8px; font-size: 0.8rem;">
-        <div style="display: flex; justify-content: space-between;">
-          <span>Subtotal Base:</span>
-          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.subtotal_base : 0)}</b>
+      <!-- RESUMEN DE TOTALES E IMPUESTOS -->
+      <div style="border-top: 1px dashed #cbd5e1; padding-top: 10px; font-size: 0.82rem; color: #0F172A; display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; justify-content: space-between; color: #334155;">
+          <span>Subtotal Gravable:</span>
+          <b style="color: #0F172A; font-family: monospace;">${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.subtotal_base : 0)}</b>
         </div>
-        <div style="display: flex; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; color: #334155;">
           <span>Total IVA 19%:</span>
-          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.iva_19 : 0)}</b>
+          <b style="color: #0F172A; font-family: monospace;">${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.iva_19 : 0)}</b>
         </div>
-        <div style="display: flex; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; color: #334155;">
           <span>Total IVA 5%:</span>
-          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.iva_5 : 0)}</b>
+          <b style="color: #0F172A; font-family: monospace;">${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.iva_5 : 0)}</b>
         </div>
-        <div style="display: flex; justify-content: space-between;">
+        <div style="display: flex; justify-content: space-between; color: #334155;">
           <span>Exento (0%):</span>
-          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.base_0 : 0)}</b>
+          <b style="color: #0F172A; font-family: monospace;">${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.base_0 : 0)}</b>
         </div>
         ${venta.liquidacion && venta.liquidacion.descuento > 0 ? `
           <div style="display: flex; justify-content: space-between; color: #b91c1c;">
             <span>Descuento aplicado:</span>
-            <b>-${App.formatoMoneda(venta.liquidacion.descuento)}</b>
+            <b style="font-family: monospace;">-${App.formatoMoneda(venta.liquidacion.descuento)}</b>
           </div>
         ` : ''}
-        <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: bold; border-top: 1px solid #111; padding-top: 6px; margin-top: 6px;">
+        <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 900; color: #0F172A; border-top: 2px solid #1E293B; padding-top: 8px; margin-top: 6px;">
           <span>TOTAL A PAGAR:</span>
-          <span>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.total_pagar : 0)}</span>
+          <span style="font-family: monospace; color: #0F172A;">${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.total_pagar : (venta.total || 0))}</span>
         </div>
       </div>
 
-      <div class="ticket-cufe-box">
-        <strong>CUFE:</strong><br>
-        <span id="ticket-cufe-text" style="font-family: monospace;">${venta.cufe}</span>
+      <!-- CUFE -->
+      <div class="ticket-cufe-box" style="margin-top: 14px;">
+        <strong style="color: #1e293b;">CUFE:</strong><br>
+        <span id="ticket-cufe-text" style="font-family: monospace; font-size: 0.65rem; color: #334155;">${venta.cufe}</span>
       </div>
 
-      ${mostrarAuditPEPS ? `
-      <!-- AUDITORÍA DE VALORACIÓN PEPS & RENTABILIDAD -->
-      <div style="margin-top: 12px; background: #f8fafc; border: 1px dashed #64748b; border-radius: 8px; padding: 10px; font-size: 0.74rem; text-align: left;">
-        <div style="font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">
-          <span><i class="fa-solid fa-chart-line"></i> Auditoría PEPS (FIFO)</span>
-          <span>Costo vs Venta</span>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
-          <thead>
-            <tr style="color: #64748b; font-size: 0.7rem; border-bottom: 1px solid #e2e8f0;">
-              <th style="text-align: left; padding: 3px 0;">Lote / Prod</th>
-              <th style="text-align: center; padding: 3px 0;">Cant</th>
-              <th style="text-align: right; padding: 3px 0;">Costo Lote</th>
-              <th style="text-align: right; padding: 3px 0;">Venta Base</th>
-              <th style="text-align: right; padding: 3px 0;">Margen</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(venta.tramos || []).map(t => {
-              const costoLote = Number(t.costo_total_peps !== undefined ? t.costo_total_peps : (t.cantidad * (t.costo_unitario_compra || 0)));
-              const ventaBase = Number(t.subtotal || 0);
-              const gananciaPerdida = Number(t.utilidad_tramo !== undefined ? t.utilidad_tramo : (ventaBase - costoLote));
-              const esPositivo = gananciaPerdida >= 0;
-              const colorMargen = esPositivo ? '#15803d' : '#b91c1c';
-              const signo = esPositivo ? '+' : '-';
-              return `
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                  <td style="padding: 3px 0;"><b>${t.nombre}</b><br><small style="color: #64748b;">${t.lote}</small></td>
-                  <td style="text-align: center; padding: 3px 0;">${t.cantidad}</td>
-                  <td style="text-align: right; padding: 3px 0; font-family: monospace;">${App.formatoMoneda(costoLote)}</td>
-                  <td style="text-align: right; padding: 3px 0; font-family: monospace;">${App.formatoMoneda(ventaBase)}</td>
-                  <td style="text-align: right; padding: 3px 0; font-family: monospace; font-weight: bold; color: ${colorMargen};">
-                    ${signo}${App.formatoMoneda(Math.abs(gananciaPerdida))}
-                  </td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-        <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; display: flex; flex-direction: column; gap: 3px;">
-          <div style="display: flex; justify-content: space-between; color: #475569;">
-            <span>Costo Total Lotes PEPS:</span>
-            <b>${App.formatoMoneda(venta.costo_peps || (venta.tramos || []).reduce((acc, t) => acc + (t.costo_total_peps || t.cantidad * (t.costo_unitario_compra || 0)), 0))}</b>
-          </div>
-          <div style="display: flex; justify-content: space-between; color: #475569;">
-            <span>Ingreso Venta Base:</span>
-            <b>${App.formatoMoneda(venta.total_venta || (venta.liquidacion ? venta.liquidacion.subtotal_base : 0))}</b>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 800; border-top: 1px solid #cbd5e1; padding-top: 4px; margin-top: 2px;">
-            <span>UTILIDAD NETA REAL:</span>
-            <span style="color: ${(venta.utilidad_neta !== undefined ? venta.utilidad_neta : ((venta.liquidacion ? venta.liquidacion.subtotal_base : 0) - (venta.costo_peps || 0))) >= 0 ? '#15803d' : '#b91c1c'};">
-              ${(venta.utilidad_neta || 0) >= 0 ? '+' : '-'}${App.formatoMoneda(Math.abs(venta.utilidad_neta || 0))} ${(venta.utilidad_neta || 0) >= 0 ? 'Ganancia' : 'Pérdida'}
-            </span>
-          </div>
-        </div>
-      </div>
-      ` : ''}
-
+      <!-- CONTENEDOR DEL CÓDIGO QR PÚBLICO -->
       <div class="ticket-qr-container" style="text-align: center; margin-top: 14px;">
         <div style="display: flex; justify-content: center; align-items: center;">
-          <div id="qr-factura" style="background: #ffffff; padding: 8px; border: 1px solid #ddd; border-radius: 6px; display: inline-block;"></div>
+          <div id="qr-factura" style="background: #ffffff; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; display: inline-block;"></div>
         </div>
-        <div style="font-size: 0.72rem; color: #555; text-align: center; margin-top: 6px;">
-          Comprobante Electrónico Validado
+        <div style="margin-top: 6px;">
+          <span style="font-size: 0.72rem; color: #475569; display: block;">Escanee el código QR para validar su factura digital</span>
+          <a href="/factura.html?f=${encodeURIComponent(venta.numero_factura)}" target="_blank" style="display: inline-block; margin-top: 4px; font-size: 0.74rem; color: #2563eb; text-decoration: underline; font-weight: 600;">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> Abrir Factura Electrónica Pública
+          </a>
         </div>
       </div>
     `;
 
-    // Generar código QR dinámico y escaneable
+    // Generar código QR dinámico apuntando a la URL pública de la factura
     const qrContainer = document.getElementById('qr-factura');
     if (qrContainer) {
       qrContainer.innerHTML = '';
       if (typeof QRCode !== 'undefined') {
         try {
-          const totalStr = venta.liquidacion ? venta.liquidacion.total_pagar : (venta.total || 0);
-          const qrText = `FACTURA: #${venta.numero_factura} | FECHA: ${venta.fecha} | CLIENTE: ${venta.cliente} | TOTAL: $${totalStr} | POS-PEPS`;
+          const publicUrl = `${window.location.origin}/factura.html?f=${encodeURIComponent(venta.numero_factura)}`;
           new QRCode(qrContainer, {
-            text: qrText,
+            text: publicUrl,
             width: 128,
             height: 128,
             colorDark: '#000000',
@@ -663,31 +635,25 @@ const PosView = {
         numero_factura: f.numero_factura,
         fecha: fechaStr,
         hora: horaStr,
-        cliente: f.cliente || 'Consumidor Final',
-        cedula_nit: f.cedula_nit || '222222222222',
+        cliente: f.cliente_nombre || f.cliente || 'Consumidor Final',
+        cedula_nit: f.cliente_nit || f.cedula_nit || '222222222222',
         metodo_pago: f.metodo_pago || 'Efectivo',
         cufe: f.cufe || 'CUFE-NO-DISPONIBLE',
         tramos: (data.items || []).map(it => ({
           nombre: it.producto || it.nombre,
-          lote: it.lote || 'LOTE-UNICO',
-          cantidad: it.cantidad,
-          precio_base: it.precio_unitario || it.precio_unitario_base,
-          subtotal: it.subtotal || it.subtotal_linea,
-          costo_total_peps: it.costo_total_lote,
-          costo_unitario_compra: it.costo_unitario_compra,
-          utilidad_tramo: it.utilidad_tramo
+          cantidad: Number(it.cantidad || 0),
+          precio_base: Number(it.precio_unitario || it.precio_unitario_base || 0),
+          iva: Number(it.iva !== undefined ? it.iva : (it.valor_iva_linea || 0)),
+          subtotal: Number(it.subtotal || it.subtotal_linea || 0)
         })),
         liquidacion: {
           subtotal_base: Number(f.subtotal_base || 0),
-          iva_19: Number(f.iva_19 || 0),
-          iva_5: Number(f.iva_5 || 0),
+          iva_19: Number(f.total_iva_19 !== undefined ? f.total_iva_19 : (f.iva_19 || 0)),
+          iva_5: Number(f.total_iva_5 !== undefined ? f.total_iva_5 : (f.iva_5 || 0)),
           base_0: Number(f.base_0 || 0),
           descuento: Number(f.descuento || 0),
           total_pagar: Number(f.total_pagar || 0)
-        },
-        costo_peps: f.costo_peps,
-        total_venta: f.total_venta,
-        utilidad_neta: f.utilidad_neta
+        }
       };
 
       this.mostrarFacturaDIAN(venta);
