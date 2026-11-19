@@ -477,7 +477,7 @@ const PosView = {
     const elBody = document.getElementById('factura-ticket-body');
     if (!elModal || !elBody) return;
 
-    const tramosHtml = venta.tramos.map(t => `
+    const tramosHtml = (venta.tramos || []).map(t => `
       <tr>
         <td>${t.nombre}<br><small style="color: #666;">Lote: <b>${t.lote}</b></small></td>
         <td style="text-align: center;">${t.cantidad}</td>
@@ -485,6 +485,9 @@ const PosView = {
         <td style="text-align: right;">${App.formatoMoneda(t.subtotal)}</td>
       </tr>
     `).join('');
+
+    const esCajero = (window.App && App.usuario && App.usuario.rol === 'Cajero');
+    const mostrarAuditPEPS = !esCajero && (venta.costo_peps !== undefined || (venta.tramos && venta.tramos.some(t => t.costo_total_peps !== undefined || t.costo_unitario_compra !== undefined)));
 
     elBody.innerHTML = `
       <div class="ticket-header">
@@ -519,21 +522,21 @@ const PosView = {
       <div style="border-top: 1px dashed #444; padding-top: 8px; font-size: 0.8rem;">
         <div style="display: flex; justify-content: space-between;">
           <span>Subtotal Base:</span>
-          <b>${App.formatoMoneda(venta.liquidacion.subtotal_base)}</b>
+          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.subtotal_base : 0)}</b>
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span>Total IVA 19%:</span>
-          <b>${App.formatoMoneda(venta.liquidacion.iva_19)}</b>
+          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.iva_19 : 0)}</b>
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span>Total IVA 5%:</span>
-          <b>${App.formatoMoneda(venta.liquidacion.iva_5)}</b>
+          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.iva_5 : 0)}</b>
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span>Exento (0%):</span>
-          <b>${App.formatoMoneda(venta.liquidacion.base_0)}</b>
+          <b>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.base_0 : 0)}</b>
         </div>
-        ${venta.liquidacion.descuento > 0 ? `
+        ${venta.liquidacion && venta.liquidacion.descuento > 0 ? `
           <div style="display: flex; justify-content: space-between; color: #b91c1c;">
             <span>Descuento aplicado:</span>
             <b>-${App.formatoMoneda(venta.liquidacion.descuento)}</b>
@@ -541,7 +544,7 @@ const PosView = {
         ` : ''}
         <div style="display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: bold; border-top: 1px solid #111; padding-top: 6px; margin-top: 6px;">
           <span>TOTAL A PAGAR:</span>
-          <span>${App.formatoMoneda(venta.liquidacion.total_pagar)}</span>
+          <span>${App.formatoMoneda(venta.liquidacion ? venta.liquidacion.total_pagar : 0)}</span>
         </div>
       </div>
 
@@ -550,6 +553,7 @@ const PosView = {
         <span id="ticket-cufe-text" style="font-family: monospace;">${venta.cufe}</span>
       </div>
 
+      ${mostrarAuditPEPS ? `
       <!-- AUDITORÍA DE VALORACIÓN PEPS & RENTABILIDAD -->
       <div style="margin-top: 12px; background: #f8fafc; border: 1px dashed #64748b; border-radius: 8px; padding: 10px; font-size: 0.74rem; text-align: left;">
         <div style="font-weight: 800; color: #0f172a; text-transform: uppercase; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">
@@ -595,41 +599,21 @@ const PosView = {
           </div>
           <div style="display: flex; justify-content: space-between; color: #475569;">
             <span>Ingreso Venta Base:</span>
-            <b>${App.formatoMoneda(venta.total_venta || venta.liquidacion.subtotal_base)}</b>
+            <b>${App.formatoMoneda(venta.total_venta || (venta.liquidacion ? venta.liquidacion.subtotal_base : 0))}</b>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 800; border-top: 1px solid #cbd5e1; padding-top: 4px; margin-top: 2px;">
             <span>UTILIDAD NETA REAL:</span>
-            <span style="color: ${(venta.utilidad_neta !== undefined ? venta.utilidad_neta : (venta.liquidacion.subtotal_base - (venta.costo_peps || 0))) >= 0 ? '#15803d' : '#b91c1c'};">
+            <span style="color: ${(venta.utilidad_neta !== undefined ? venta.utilidad_neta : ((venta.liquidacion ? venta.liquidacion.subtotal_base : 0) - (venta.costo_peps || 0))) >= 0 ? '#15803d' : '#b91c1c'};">
               ${(venta.utilidad_neta || 0) >= 0 ? '+' : '-'}${App.formatoMoneda(Math.abs(venta.utilidad_neta || 0))} ${(venta.utilidad_neta || 0) >= 0 ? 'Ganancia' : 'Pérdida'}
             </span>
           </div>
         </div>
       </div>
+      ` : ''}
 
-      <div class="ticket-qr-container">
-        <div id="ticket-qr-svg" style="background: #fff; padding: 6px; border: 1px solid #ccc; border-radius: 4px;">
-          <svg width="130" height="130" viewBox="0 0 100 100" fill="#000">
-            <rect x="0" y="0" width="30" height="30" fill="#000"/>
-            <rect x="5" y="5" width="20" height="20" fill="#fff"/>
-            <rect x="10" y="10" width="10" height="10" fill="#000"/>
-
-            <rect x="70" y="0" width="30" height="30" fill="#000"/>
-            <rect x="75" y="5" width="20" height="20" fill="#fff"/>
-            <rect x="80" y="10" width="10" height="10" fill="#000"/>
-
-            <rect x="0" y="70" width="30" height="30" fill="#000"/>
-            <rect x="5" y="75" width="20" height="20" fill="#fff"/>
-            <rect x="10" y="80" width="10" height="10" fill="#000"/>
-
-            <rect x="40" y="10" width="20" height="10" fill="#000"/>
-            <rect x="10" y="40" width="10" height="20" fill="#000"/>
-            <rect x="35" y="35" width="30" height="30" fill="#000"/>
-            <rect x="45" y="45" width="10" height="10" fill="#fff"/>
-            <rect x="75" y="40" width="15" height="10" fill="#000"/>
-            <rect x="40" y="75" width="20" height="15" fill="#000"/>
-            <rect x="70" y="70" width="25" height="25" fill="#000"/>
-            <rect x="80" y="80" width="5" height="5" fill="#fff"/>
-          </svg>
+      <div class="ticket-qr-container" style="text-align: center; margin-top: 14px;">
+        <div style="display: flex; justify-content: center; align-items: center;">
+          <div id="qr-factura" style="background: #ffffff; padding: 8px; border: 1px solid #ddd; border-radius: 6px; display: inline-block;"></div>
         </div>
         <div style="font-size: 0.72rem; color: #555; text-align: center; margin-top: 6px;">
           Comprobante Electrónico Validado
@@ -637,7 +621,80 @@ const PosView = {
       </div>
     `;
 
+    // Generar código QR dinámico y escaneable
+    const qrContainer = document.getElementById('qr-factura');
+    if (qrContainer) {
+      qrContainer.innerHTML = '';
+      if (typeof QRCode !== 'undefined') {
+        try {
+          const totalStr = venta.liquidacion ? venta.liquidacion.total_pagar : (venta.total || 0);
+          const qrText = `FACTURA: #${venta.numero_factura} | FECHA: ${venta.fecha} | CLIENTE: ${venta.cliente} | TOTAL: $${totalStr} | POS-PEPS`;
+          new QRCode(qrContainer, {
+            text: qrText,
+            width: 128,
+            height: 128,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel ? QRCode.CorrectLevel.M : 0
+          });
+        } catch (e) {
+          console.warn('Error al generar QRCode:', e);
+        }
+      }
+    }
+
     elModal.classList.remove('hidden');
+  },
+
+  async abrirComprobantePorId(idVenta) {
+    try {
+      App.toast('Cargando comprobante...', 'info');
+      const res = await fetch(`/api/ventas/${idVenta}`);
+      const data = await res.json();
+      if (!res.ok || !data.factura) {
+        throw new Error(data.error || 'No se encontró la factura');
+      }
+      const f = data.factura;
+      const fechaObj = new Date(f.fecha_venta);
+      const fechaStr = isNaN(fechaObj.getTime()) ? (f.fecha_venta ? String(f.fecha_venta).slice(0, 10) : '') : fechaObj.toLocaleDateString();
+      const horaStr = isNaN(fechaObj.getTime()) ? (f.fecha_venta ? String(f.fecha_venta).slice(11, 19) : '') : fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      const venta = {
+        numero_factura: f.numero_factura,
+        fecha: fechaStr,
+        hora: horaStr,
+        cliente: f.cliente || 'Consumidor Final',
+        cedula_nit: f.cedula_nit || '222222222222',
+        metodo_pago: f.metodo_pago || 'Efectivo',
+        cufe: f.cufe || 'CUFE-NO-DISPONIBLE',
+        tramos: (data.items || []).map(it => ({
+          nombre: it.producto || it.nombre,
+          lote: it.lote || 'LOTE-UNICO',
+          cantidad: it.cantidad,
+          precio_base: it.precio_unitario || it.precio_unitario_base,
+          subtotal: it.subtotal || it.subtotal_linea,
+          costo_total_peps: it.costo_total_lote,
+          costo_unitario_compra: it.costo_unitario_compra,
+          utilidad_tramo: it.utilidad_tramo
+        })),
+        liquidacion: {
+          subtotal_base: Number(f.subtotal_base || 0),
+          iva_19: Number(f.iva_19 || 0),
+          iva_5: Number(f.iva_5 || 0),
+          base_0: Number(f.base_0 || 0),
+          descuento: Number(f.descuento || 0),
+          total_pagar: Number(f.total_pagar || 0)
+        },
+        costo_peps: f.costo_peps,
+        total_venta: f.total_venta,
+        utilidad_neta: f.utilidad_neta
+      };
+
+      this.mostrarFacturaDIAN(venta);
+    } catch (err) {
+      console.error('Error al abrir comprobante:', err);
+      App.toast(err.message, 'danger');
+    }
   },
 
   copiarCUFE() {

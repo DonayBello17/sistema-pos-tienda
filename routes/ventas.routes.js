@@ -6,6 +6,7 @@ router.get('/', VentasController.obtenerVentas);
 router.post('/', VentasController.procesarVenta);
 router.get('/clientes', VentasController.obtenerClientes);
 router.post('/clientes', VentasController.crearCliente);
+router.get('/hoy', VentasController.obtenerVentasHoy);
 router.get('/:id', VentasController.obtenerVentaPorId);
 
 module.exports = router;

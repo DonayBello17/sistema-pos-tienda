@@ -379,57 +379,218 @@ const ReportesView = {
     App.toast('Filtros de reporte aplicados', 'info');
   },
 
-  exportarReporte() {
+  exportarExcel() {
     if (!this.datosActuales) {
       App.toast('No hay datos disponibles para exportar', 'warning');
       return;
     }
 
-    const { periodo, kpis, por_metodo_pago, top_productos, serie_diaria } = this.datosActuales;
+    if (typeof XLSX === 'undefined') {
+      App.toast('La librería SheetJS (XLSX) no está cargada. Verifique su conexión.', 'danger');
+      return;
+    }
 
-    let csv = '\uFEFF'; // BOM para soporte de caracteres en Excel
-    csv += 'REPORTE GERENCIAL DE VENTAS E INVENTARIO PEPS\n';
-    csv += `Periodo;${periodo.desde};a;${periodo.hasta}\n`;
-    csv += `Fecha de Generacion;${new Date().toLocaleString('es-CO')}\n\n`;
+    try {
+      const { periodo, kpis, por_metodo_pago, top_productos } = this.datosActuales;
+      const wb = XLSX.utils.book_new();
 
-    csv += 'INDICADORES CLAVE (KPIS)\n';
-    csv += `Ingresos Totales;$${(kpis.total_ingresos || 0).toFixed(2)}\n`;
-    csv += `Transacciones Realizadas;${kpis.cantidad_ventas || 0}\n`;
-    csv += `Utilidad Neta PEPS;$${(kpis.utilidad_neta_peps || 0).toFixed(2)}\n`;
-    csv += `Ticket Promedio;$${(kpis.ticket_promedio || 0).toFixed(2)}\n`;
-    csv += `Unidades Vendidas;${kpis.unidades_vendidas || 0}\n`;
-    csv += `Perdidas por Mermas / Bajas;$${(kpis.total_mermas || 0).toFixed(2)}\n\n`;
+      // ================= HOJA 1: RESUMEN EJECUTIVO =================
+      const resumenData = [
+        ['SISTEMA DE GESTIÓN COMERCIAL & INVENTARIO PEPS'],
+        ['REPORTE GERENCIAL EJECUTIVO'],
+        ['Periodo Analizado:', `${periodo.desde} al ${periodo.hasta}`],
+        ['Fecha de Generación:', new Date().toLocaleString('es-CO')],
+        [],
+        ['INDICADORES CLAVE (KPIS)', 'VALOR', 'DETALLE'],
+        ['Total Vendido (Ingresos Base + IVA)', Number(kpis.total_ingresos || 0), 'Facturación bruta acumulada'],
+        ['Transacciones Realizadas', Number(kpis.cantidad_ventas || 0), 'Número de facturas emitidas'],
+        ['Utilidad Real PEPS', Number(kpis.utilidad_neta_peps || 0), 'Ganancia real descontando costo PEPS'],
+        ['Ticket Promedio', Number(kpis.ticket_promedio || 0), 'Promedio cobrado por transacción'],
+        ['Unidades Vendidas', Number(kpis.unidades_vendidas || 0), 'Volumen físico de unidades vendidas'],
+        ['Pérdidas por Mermas / Bajas', Number(kpis.total_mermas || 0), 'Costo total de bajas por caducidad o avería'],
+        [],
+        ['DISTRIBUCIÓN POR MEDIO DE PAGO', 'TRANSACCIONES', 'TOTAL RECAUDADO', 'PARTICIPACIÓN %']
+      ];
 
-    csv += 'RECAUDO POR METODO DE PAGO\n';
-    csv += 'Metodo;Transacciones;Monto Recaudado;Porcentaje\n';
-    por_metodo_pago.forEach(m => {
-      csv += `"${m.metodo_pago}";${m.transacciones};$${m.total.toFixed(2)};${m.porcentaje}%\n`;
-    });
-    csv += '\n';
+      (por_metodo_pago || []).forEach(m => {
+        resumenData.push([
+          m.metodo_pago,
+          m.transacciones,
+          Number(m.total || 0),
+          `${m.porcentaje}%`
+        ]);
+      });
 
-    csv += 'RANKING DE PRODUCTOS MAS RENTABLES (PEPS)\n';
-    csv += 'Posicion;Producto;Codigo de Barras;Unidades;Ingresos;Costo PEPS;Utilidad PEPS;Margen %\n';
-    top_productos.forEach(p => {
-      csv += `${p.posicion};"${p.nombre}";"${p.codigo_barras}";${p.unidades_vendidas};$${p.ingresos_totales.toFixed(2)};$${p.costo_peps.toFixed(2)};$${p.utilidad_peps.toFixed(2)};${p.margen_promedio}%\n`;
-    });
-    csv += '\n';
+      const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+      wsResumen['!cols'] = [
+        { wch: 38 },
+        { wch: 22 },
+        { wch: 32 },
+        { wch: 18 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen Ejecutivo');
 
-    csv += 'SERIE HISTORICA DIARIA\n';
-    csv += 'Fecha;Ingresos;Utilidad PEPS;Transacciones\n';
-    serie_diaria.forEach(s => {
-      csv += `${s.fecha};$${s.ingresos.toFixed(2)};$${s.utilidad.toFixed(2)};${s.transacciones}\n`;
-    });
+      // ================= HOJA 2: RENTABILIDAD POR PRODUCTO =================
+      const prodHeaders = [
+        'Posición',
+        'Producto',
+        'Código de Barras',
+        'Unidades Vendidas',
+        'Ingresos Totales',
+        'Costo PEPS',
+        'Utilidad PEPS',
+        '% Margen'
+      ];
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Reporte_Gerencial_${periodo.desde}_al_${periodo.hasta}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const prodRows = (top_productos || []).map(p => [
+        p.posicion || 0,
+        p.nombre || '',
+        p.codigo_barras || '',
+        Number(p.unidades_vendidas || 0),
+        Number(p.ingresos_totales || 0),
+        Number(p.costo_peps || 0),
+        Number(p.utilidad_peps || 0),
+        `${p.margen_promedio || 0}%`
+      ]);
 
-    App.toast('Reporte exportado exitosamente a CSV', 'success');
+      const wsProductos = XLSX.utils.aoa_to_sheet([prodHeaders, ...prodRows]);
+      wsProductos['!cols'] = [
+        { wch: 10 },
+        { wch: 36 },
+        { wch: 20 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 14 }
+      ];
+      XLSX.utils.book_append_sheet(wb, wsProductos, 'Rentabilidad por Producto');
+
+      // Descarga de archivo XLSX
+      const nombreArchivo = `Reporte_Gerencial_${periodo.desde}_al_${periodo.hasta}.xlsx`;
+      XLSX.writeFile(wb, nombreArchivo);
+      App.toast('Reporte Excel (.xlsx) generado exitosamente', 'success');
+    } catch (err) {
+      console.error('Error generando Excel:', err);
+      App.toast('Error al exportar Excel: ' + err.message, 'danger');
+    }
+  },
+
+  exportarPDF() {
+    if (!this.datosActuales) {
+      App.toast('No hay datos disponibles para exportar', 'warning');
+      return;
+    }
+
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      App.toast('La librería jsPDF no está cargada. Verifique su conexión.', 'danger');
+      return;
+    }
+
+    try {
+      const { periodo, kpis, por_metodo_pago, top_productos } = this.datosActuales;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+
+      // Encabezado Corporativo Limpio (Fondo blanco de papel)
+      doc.setFontSize(15);
+      doc.setTextColor(15, 23, 42); // slate-900
+      doc.text('SISTEMA DE GESTIÓN COMERCIAL & INVENTARIO PEPS', 14, 16);
+
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105); // slate-600
+      doc.text(`Reporte Gerencial Ejecutivo | Periodo: ${periodo.desde} al ${periodo.hasta}`, 14, 22);
+
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.text(`Fecha y hora de emisión: ${new Date().toLocaleString('es-CO')}`, 14, 27);
+
+      // Línea divisoria decorativa
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(14, 29, 196, 29);
+
+      // ================= TABLA 1: KPIS FINANCIEROS =================
+      doc.autoTable({
+        startY: 33,
+        head: [['Indicador Clave (KPI)', 'Valor Registrado', 'Descripción / Detalle']],
+        body: [
+          ['Total Vendido (Ingresos)', App.formatoMoneda(kpis.total_ingresos || 0), 'Venta bruta acumulada'],
+          ['Transacciones Realizadas', `${kpis.cantidad_ventas || 0} facturas`, 'Total de facturas emitidas'],
+          ['Utilidad Real PEPS', App.formatoMoneda(kpis.utilidad_neta_peps || 0), 'Margen neto descontando costo de lotes PEPS'],
+          ['Ticket Promedio', App.formatoMoneda(kpis.ticket_promedio || 0), 'Valor promedio recaudado por factura'],
+          ['Unidades Vendidas', `${(kpis.unidades_vendidas || 0).toLocaleString('es-CO')} u.`, 'Volumen total comercializado'],
+          ['Pérdidas por Mermas / Bajas', App.formatoMoneda(kpis.total_mermas || 0), 'Descartes registrados por caducidad o daño']
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+        bodyStyles: { fontSize: 8, textColor: [15, 23, 42] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: { cellPadding: 2.8, lineColor: [226, 232, 240], lineWidth: 0.1 },
+        margin: { left: 14, right: 14 }
+      });
+
+      // ================= TABLA 2: MEDIOS DE PAGO =================
+      const startY2 = doc.lastAutoTable.finalY + 8;
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text('Distribución de Ingresos por Medio de Pago', 14, startY2 - 2);
+
+      doc.autoTable({
+        startY: startY2,
+        head: [['Medio de Pago', 'Transacciones', 'Total Recaudado', 'Participación %']],
+        body: (por_metodo_pago || []).map(m => [
+          m.metodo_pago,
+          `${m.transacciones} ops`,
+          App.formatoMoneda(m.total),
+          `${m.porcentaje}%`
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+        bodyStyles: { fontSize: 8, textColor: [15, 23, 42] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: { cellPadding: 2.8, lineColor: [226, 232, 240], lineWidth: 0.1 },
+        margin: { left: 14, right: 14 }
+      });
+
+      // ================= TABLA 3: TOP PRODUCTOS & PEPS =================
+      const startY3 = doc.lastAutoTable.finalY + 8;
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text('Ranking de Productos & Rentabilidad PEPS', 14, startY3 - 2);
+
+      doc.autoTable({
+        startY: startY3,
+        head: [['#', 'Producto', 'Código', 'Cant.', 'Ingresos', 'Costo PEPS', 'Utilidad Real', 'Margen %']],
+        body: (top_productos || []).map((p, idx) => [
+          idx + 1,
+          p.nombre,
+          p.codigo_barras,
+          `${p.unidades_vendidas} u.`,
+          App.formatoMoneda(p.ingresos_totales),
+          App.formatoMoneda(p.costo_peps),
+          `+${App.formatoMoneda(p.utilidad_peps)}`,
+          `${p.margen_promedio}%`
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 7.5, textColor: [15, 23, 42] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: { cellPadding: 2.2, lineColor: [226, 232, 240], lineWidth: 0.1 },
+        margin: { left: 14, right: 14 }
+      });
+
+      const nombrePDF = `Reporte_Gerencial_${periodo.desde}_al_${periodo.hasta}.pdf`;
+      doc.save(nombrePDF);
+      App.toast('Reporte PDF descargado exitosamente', 'success');
+    } catch (err) {
+      console.error('Error generando PDF:', err);
+      App.toast('Error al exportar PDF: ' + err.message, 'danger');
+    }
+  },
+
+  exportarReporte() {
+    this.exportarExcel();
   }
 };
 

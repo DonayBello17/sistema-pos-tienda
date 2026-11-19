@@ -7,6 +7,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Generador de Código QR Dinámico -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Exportación de Reportes a Excel (.xlsx) y PDF Nítido -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -807,8 +813,11 @@
               <i class="fa-solid fa-filter"></i> Aplicar
             </button>
 
-            <button onclick="ReportesView.exportarReporte()" class="btn btn-primary" style="padding: 7px 14px; font-size: 0.78rem;">
-              <i class="fa-solid fa-file-arrow-down"></i> Exportar Reporte
+            <button onclick="ReportesView.exportarExcel()" class="btn btn-secondary" style="padding: 7px 12px; font-size: 0.78rem; border-color: rgba(16, 185, 129, 0.4); color: #10B981;" title="Descargar reporte en formato Excel .xlsx">
+              <i class="fa-solid fa-file-excel"></i> Exportar Excel (.xlsx)
+            </button>
+            <button onclick="ReportesView.exportarPDF()" class="btn btn-primary" style="padding: 7px 12px; font-size: 0.78rem;" title="Generar documento PDF ejecutivo">
+              <i class="fa-solid fa-file-pdf"></i> Exportar PDF
             </button>
           </div>
         </div>
@@ -1225,7 +1234,7 @@
 
   <!-- ================= MODAL: CIERRE Y CUADRE DE CAJA ================= -->
   <div id="modal-arqueo" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 580px;">
+    <div class="modal-content" style="max-width: 840px;">
       <div class="modal-header">
         <h3 style="font-size: 1.05rem; font-weight: 700;">
           <i class="fa-solid fa-vault" style="color: var(--warning);"></i> Cierre y Cuadre de Caja del Turno

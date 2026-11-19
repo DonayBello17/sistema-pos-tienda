@@ -163,6 +163,12 @@ class VentasController {
 
       const itemsFormateados = items.map(it => ({
         ...it,
+        producto: it.producto_nombre || '',
+        lote: it.numero_lote || 'N/A',
+        cantidad: Number(it.cantidad || 0),
+        precio_unitario: Number(it.precio_unitario_base || 0),
+        iva: Number(it.valor_iva_linea || 0),
+        subtotal: Number(it.subtotal_linea || 0),
         costo_unitario_compra: Number(it.costo_unitario_compra || 0),
         precio_unitario_base: Number(it.precio_unitario_base || 0),
         subtotal_linea: Number(it.subtotal_linea || 0),
@@ -186,6 +192,47 @@ class VentasController {
       });
     } catch (err) {
       res.status(500).json({ error: 'Error al consultar factura: ' + err.message });
+    }
+  }
+
+  static async obtenerVentasHoy(req, res) {
+    try {
+      const fecha = req.query.fecha || new Date().toISOString().slice(0, 10);
+      const [ventas] = await pool.query(
+        `SELECT 
+           vf.id_venta,
+           vf.numero_factura,
+           DATE_FORMAT(vf.fecha_venta, '%H:%i:%s') AS hora,
+           DATE_FORMAT(vf.fecha_venta, '%Y-%m-%d %H:%i:%s') AS fecha_completa,
+           IFNULL(c.nombre_completo, 'Consumidor Final') AS cliente,
+           IFNULL(c.cedula_nit, '222222222222') AS cliente_nit,
+           TRIM(IFNULL(vf.metodo_pago, 'Efectivo')) AS metodo_pago,
+           CAST(vf.total_pagar AS DECIMAL(12, 2)) AS total
+         FROM ventas_facturas vf
+         LEFT JOIN clientes c ON vf.id_cliente = c.id_cliente
+         WHERE DATE(vf.fecha_venta) = ?
+         ORDER BY vf.fecha_venta DESC, vf.id_venta DESC`,
+        [fecha]
+      );
+
+      res.json({
+        ok: true,
+        fecha,
+        total_ventas: ventas.length,
+        gran_total: ventas.reduce((acc, v) => acc + Number(v.total || 0), 0),
+        ventas: ventas.map(v => ({
+          id_venta: v.id_venta,
+          numero_factura: v.numero_factura,
+          hora: v.hora,
+          fecha_completa: v.fecha_completa,
+          cliente: v.cliente,
+          cliente_nit: v.cliente_nit,
+          metodo_pago: v.metodo_pago,
+          total: Number(v.total || 0)
+        }))
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: 'Error al consultar ventas de hoy: ' + err.message });
     }
   }
 }

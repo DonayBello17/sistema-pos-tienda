@@ -376,11 +376,136 @@ const App = {
             Ingrese el dinero contado para validar el cuadre de caja
           </div>
         </div>
+
+        <!-- Detalle de Ventas del Turno (Hoy) -->
+        <div style="margin-top: 18px; background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <h4 style="font-size: 0.88rem; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Detalle de Ventas del Turno (Hoy)
+            </h4>
+            <div style="position: relative; min-width: 240px;">
+              <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: var(--text-dim);"></i>
+              <input type="text" id="buscador-ventas-hoy" class="input-field" style="padding-left: 28px; font-size: 0.78rem; height: 32px;" placeholder="Buscar factura o cliente..." oninput="App.filtrarVentasHoy(this.value)">
+            </div>
+          </div>
+
+          <div style="overflow-x: auto; max-height: 260px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border); color: var(--text-muted); text-transform: uppercase; font-size: 0.7rem; text-align: left;">
+                  <th style="padding: 8px 6px;">Factura</th>
+                  <th style="padding: 8px 6px;">Hora</th>
+                  <th style="padding: 8px 6px;">Cliente</th>
+                  <th style="padding: 8px 6px;">Método de Pago</th>
+                  <th style="padding: 8px 6px; text-align: right;">Total Cobrado</th>
+                  <th style="padding: 8px 6px; text-align: center;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-ventas-hoy-body">
+                <tr><td colspan="6" style="padding: 16px; text-align: center; color: var(--text-dim);">Cargando facturas del turno...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       `;
 
       elModal.classList.remove('hidden');
+      this.cargarVentasHoy();
     } catch (err) {
       this.toast('Error al consultar cuadre de caja: ' + err.message, 'danger');
+    }
+  },
+
+  ventasHoyData: [],
+
+  async cargarVentasHoy() {
+    try {
+      const res = await fetch('/api/ventas/hoy');
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        this.ventasHoyData = data.ventas || [];
+      } else {
+        this.ventasHoyData = [];
+      }
+      this.renderTablaVentasHoy(this.ventasHoyData);
+    } catch (err) {
+      console.error('Error al cargar ventas de hoy:', err);
+      const tbody = document.getElementById('tabla-ventas-hoy-body');
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding: 16px; text-align: center; color: var(--text-dim);">No se pudo cargar el historial de ventas.</td></tr>`;
+      }
+    }
+  },
+
+  filtrarVentasHoy(query) {
+    const q = (query || '').toLowerCase().trim();
+    if (!q) {
+      this.renderTablaVentasHoy(this.ventasHoyData);
+      return;
+    }
+    const filtradas = this.ventasHoyData.filter(v => 
+      (v.numero_factura && v.numero_factura.toLowerCase().includes(q)) ||
+      (v.cliente && v.cliente.toLowerCase().includes(q)) ||
+      (v.metodo_pago && v.metodo_pago.toLowerCase().includes(q))
+    );
+    this.renderTablaVentasHoy(filtradas);
+  },
+
+  renderTablaVentasHoy(lista) {
+    const tbody = document.getElementById('tabla-ventas-hoy-body');
+    if (!tbody) return;
+
+    if (!lista || lista.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="padding: 24px; text-align: center; color: var(--text-dim); font-size: 0.8rem;">
+            <i class="fa-solid fa-receipt" style="font-size: 1.5rem; margin-bottom: 6px; display: block; opacity: 0.4;"></i>
+            No se han registrado ventas en el turno de hoy
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = lista.map(v => {
+      const m = (v.metodo_pago || 'Efectivo').toLowerCase();
+      let badgeStyle = 'background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);'; // Efectivo
+      if (m.includes('tarjeta')) {
+        badgeStyle = 'background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);'; // Tarjeta
+      } else if (m.includes('transf')) {
+        badgeStyle = 'background: rgba(192, 132, 252, 0.15); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.3);'; // Transferencia
+      }
+
+      return `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+          <td style="padding: 8px 6px; font-weight: 700; color: #fff;">
+            <i class="fa-solid fa-file-invoice" style="color: var(--primary); font-size: 0.75rem; margin-right: 4px;"></i>
+            ${v.numero_factura}
+          </td>
+          <td style="padding: 8px 6px; color: var(--text-muted); font-family: monospace;">${v.hora || '--:--'}</td>
+          <td style="padding: 8px 6px; color: #e2e8f0;">${v.cliente}</td>
+          <td style="padding: 8px 6px;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; ${badgeStyle}">
+              ${v.metodo_pago}
+            </span>
+          </td>
+          <td style="padding: 8px 6px; text-align: right; font-weight: 800; color: #fff; font-family: monospace;">
+            ${App.formatoMoneda(v.total)}
+          </td>
+          <td style="padding: 8px 6px; text-align: center;">
+            <button type="button" onclick="App.verTirilla(${v.id_venta})" class="btn btn-secondary" style="padding: 3px 8px; font-size: 0.72rem; border-radius: 6px;">
+              <i class="fa-solid fa-eye"></i> Ver / Tirilla
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  verTirilla(idVenta) {
+    if (window.PosView && typeof PosView.abrirComprobantePorId === 'function') {
+      PosView.abrirComprobantePorId(idVenta);
+    } else {
+      App.toast('Módulo POS no cargado', 'warning');
     }
   },
 

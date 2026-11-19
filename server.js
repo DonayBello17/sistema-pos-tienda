@@ -90,6 +90,7 @@ app.get('/api/clientes', VentasController.obtenerClientes);
 app.post('/api/clientes', VentasController.crearCliente);
 app.get('/api/ventas/clientes', VentasController.obtenerClientes);
 app.post('/api/ventas/clientes', VentasController.crearCliente);
+app.get('/api/ventas/hoy', VentasController.obtenerVentasHoy);
 app.get('/api/ventas/:id', VentasController.obtenerVentaPorId);
 
 app.get('/api/reportes/gerenciales', ReportesController.obtenerReportesGerenciales);
