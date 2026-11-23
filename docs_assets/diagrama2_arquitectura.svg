@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1050" height="680" viewBox="0 0 1050 680" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bgArqui" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="100%" stop-color="#F97316"/>
+    </linearGradient>
+    <filter id="shadowDark" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1050" height="680" fill="url(#bgArqui)"/>
+
+  <!-- Título -->
+  <text x="525" y="45" text-anchor="middle" font-size="22" font-weight="800" fill="#F8FAFC">ARQUITECTURA CLOUD DISTRIBUIDA Y MODELO MULTICAPA</text>
+  <text x="525" y="70" text-anchor="middle" font-size="13" font-weight="500" fill="#94A3B8">Despliegue Serverless en Render (PaaS) con Base de Datos Distribuida en TiDB Cloud (DBaaS - TLS/SSL)</text>
+
+  <!-- CAPA 1: CLIENTES Y NAVEGADORES -->
+  <g transform="translate(60, 110)">
+    <rect width="260" height="500" rx="14" fill="url(#cardGrad)" stroke="#475569" stroke-width="1.5" filter="url(#shadowDark)"/>
+    <rect width="260" height="42" rx="14" fill="#0F172A" stroke="#475569" stroke-width="1"/>
+    <text x="130" y="27" text-anchor="middle" font-size="13" font-weight="800" fill="#38BDF8">1. CAPA DE PRESENTACIÓN</text>
+
+    <!-- Dispositivos -->
+    <g transform="translate(20, 65)">
+      <rect width="220" height="90" rx="8" fill="#0F172A" stroke="#334155"/>
+      <text x="110" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#F8FAFC">Dispositivos Clientes</text>
+      <text x="110" y="48" text-anchor="middle" font-size="11" fill="#94A3B8">Computadores de Caja (POS)</text>
+      <text x="110" y="66" text-anchor="middle" font-size="11" fill="#94A3B8">Tablets &amp; Celulares (Responsive)</text>
+    </g>
+
+    <!-- Frontend SPA -->
+    <g transform="translate(20, 175)">
+      <rect width="220" height="150" rx="8" fill="#0F172A" stroke="#334155"/>
+      <text x="110" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#2DD4BF">Frontend SPA (Vanilla JS)</text>
+      <text x="20" y="52" font-size="11" fill="#E2E8F0">• HTML5 Semántico + Dark Matte</text>
+      <text x="20" y="72" font-size="11" fill="#E2E8F0">• Tailwind CSS Responsive Engine</text>
+      <text x="20" y="92" font-size="11" fill="#E2E8F0">• Chart.js (Curvas y Tendencias)</text>
+      <text x="20" y="112" font-size="11" fill="#E2E8F0">• QRCode.js (Generador DIAN)</text>
+      <text x="20" y="132" font-size="11" fill="#E2E8F0">• SheetJS (.xlsx) + jsPDF (PDF)</text>
+    </g>
+
+    <!-- Vista Pública -->
+    <g transform="translate(20, 345)">
+      <rect width="220" height="125" rx="8" fill="#0F172A" stroke="#0EA5E9"/>
+      <text x="110" y="28" text-anchor="middle" font-size="12" font-weight="700" fill="#38BDF8">Página Pública de Factura</text>
+      <text x="110" y="48" text-anchor="middle" font-size="10.5" font-weight="600" fill="#E2E8F0">factura.html?f=FAC-XXXX</text>
+      <text x="20" y="72" font-size="10.5" fill="#94A3B8">• Acceso público sin login</text>
+      <text x="20" y="90" font-size="10.5" fill="#94A3B8">• Consulta digital por QR</text>
+      <text x="20" y="108" font-size="10.5" fill="#94A3B8">• Impresión de tirilla limpia</text>
+    </g>
+  </g>
+
+  <!-- CANAL DE COMUNICACIÓN 1: HTTPS -->
+  <g transform="translate(320, 340)">
+    <line x1="0" y1="0" x2="65" y2="0" stroke="#38BDF8" stroke-width="3" stroke-dasharray="6,4"/>
+    <polygon points="65,0 55,-6 55,6" fill="#38BDF8"/>
+    <polygon points="0,0 10,-6 10,6" fill="#38BDF8"/>
+    <rect x="-10" y="-35" width="85" height="24" rx="6" fill="#0F172A" stroke="#38BDF8"/>
+    <text x="32" y="-19" text-anchor="middle" font-size="10.5" font-weight="800" fill="#38BDF8">HTTPS / JSON</text>
+  </g>
+
+  <!-- CAPA 2: SERVIDOR BACKEND (RENDER PAAS) -->
+  <g transform="translate(395, 110)">
+    <rect width="275" height="500" rx="14" fill="url(#cardGrad)" stroke="#475569" stroke-width="1.5" filter="url(#shadowDark)"/>
+    <rect width="275" height="42" rx="14" fill="#0F172A" stroke="#475569" stroke-width="1"/>
+    <text x="137" y="27" text-anchor="middle" font-size="13" font-weight="800" fill="#2DD4BF">2. BACKEND (RENDER CLOUD)</text>
+
+    <!-- Node.js + Express -->
+    <g transform="translate(18, 60)">
+      <rect width="239" height="70" rx="8" fill="#0F172A" stroke="#334155"/>
+      <text x="119" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#4ADE80">Node.js (v22) + Express.js</text>
+      <text x="119" y="46" text-anchor="middle" font-size="10.5" fill="#94A3B8">Servidor RESTful, CORS &amp; Static Files</text>
+    </g>
+
+    <!-- Controladores -->
+    <g transform="translate(18, 145)">
+      <rect width="239" height="110" rx="8" fill="#0F172A" stroke="#334155"/>
+      <text x="119" y="24" text-anchor="middle" font-size="11.5" font-weight="700" fill="#F8FAFC">Controladores de Rutas API</text>
+      <text x="20" y="46" font-size="10.5" fill="#E2E8F0">• VentasController (POS &amp; Hoy)</text>
+      <text x="20" y="66" font-size="10.5" fill="#E2E8F0">• ComprasController (Recepción Lotes)</text>
+      <text x="20" y="86" font-size="10.5" fill="#E2E8F0">• ReportesController (Métricas &amp; Kardex)</text>
+      <text x="20" y="104" font-size="10.5" fill="#E2E8F0">• Factura Pública (/api/public/factura)</text>
+    </g>
+
+    <!-- Motor de Dominio -->
+    <g transform="translate(18, 270)">
+      <rect width="239" height="120" rx="8" fill="#0F172A" stroke="#14B8A6"/>
+      <text x="119" y="24" text-anchor="middle" font-size="11.5" font-weight="700" fill="#2DD4BF">Servicios de Dominio</text>
+      <text x="20" y="46" font-size="10.5" fill="#E2E8F0">• PepsService (Algoritmo FIFO)</text>
+      <text x="20" y="66" font-size="10.5" fill="#E2E8F0">• DianService (CUFE, QR, IVA 0-5-19)</text>
+      <text x="20" y="86" font-size="10.5" fill="#E2E8F0">• Anti-Loss Margin Engine</text>
+      <text x="20" y="106" font-size="10.5" fill="#E2E8F0">• Semáforo Expiration Checker</text>
+    </g>
+
+    <!-- Pool de Conexiones -->
+    <g transform="translate(18, 405)">
+      <rect width="239" height="75" rx="8" fill="#0F172A" stroke="#334155"/>
+      <text x="119" y="25" text-anchor="middle" font-size="11.5" font-weight="700" fill="#FBBF24">mysql2/promise Pool</text>
+      <text x="119" y="45" text-anchor="middle" font-size="10.5" fill="#94A3B8">Transacciones ACID: commit/rollback</text>
+      <text x="119" y="63" text-anchor="middle" font-size="10.5" fill="#F87171">Bloqueo Pesimista (FOR UPDATE)</text>
+    </g>
+  </g>
+
+  <!-- CANAL DE COMUNICACIÓN 2: SSL/TLS TI-DB -->
+  <g transform="translate(670, 340)">
+    <line x1="0" y1="0" x2="65" y2="0" stroke="#F97316" stroke-width="3" stroke-dasharray="6,4"/>
+    <polygon points="65,0 55,-6 55,6" fill="#F97316"/>
+    <polygon points="0,0 10,-6 10,6" fill="#F97316"/>
+    <rect x="-10" y="-35" width="85" height="24" rx="6" fill="#0F172A" stroke="#F97316"/>
+    <text x="32" y="-19" text-anchor="middle" font-size="10.5" font-weight="800" fill="#F97316">TLS/SSL (4000)</text>
+  </g>
+
+  <!-- CAPA 3: BASE DE DATOS DISTRIBUIDA (TIDB CLOUD) -->
+  <g transform="translate(745, 110)">
+    <rect width="245" height="500" rx="14" fill="url(#cardGrad)" stroke="#475569" stroke-width="1.5" filter="url(#shadowDark)"/>
+    <rect width="245" height="42" rx="14" fill="#0F172A" stroke="#475569" stroke-width="1"/>
+    <text x="122" y="27" text-anchor="middle" font-size="13" font-weight="800" fill="#FB923C">3. DATOS (TIDB CLOUD)</text>
+
+    <!-- Cluster Serverless -->
+    <g transform="translate(15, 65)">
+      <rect width="215" height="85" rx="8" fill="#0F172A" stroke="#EA580C"/>
+      <text x="107" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#F97316">Clúster TiDB Serverless</text>
+      <text x="107" y="46" text-anchor="middle" font-size="10.5" fill="#94A3B8">MySQL 8.0 Compatible</text>
+      <text x="107" y="65" text-anchor="middle" font-size="10.5" fill="#94A3B8">Alta Disponibilidad Multi-Zona</text>
+    </g>
+
+    <!-- Esquema Relacional -->
+    <g transform="translate(15, 165)">
+      <rect width="215" height="305" rx="8" fill="#0F172A" stroke="#334155"/>
+      <text x="107" y="26" text-anchor="middle" font-size="11.5" font-weight="700" fill="#F8FAFC">13 Tablas Relacionales (3FN)</text>
+      <text x="20" y="52" font-size="10.5" fill="#E2E8F0">1. usuarios</text>
+      <text x="20" y="72" font-size="10.5" fill="#E2E8F0">2. roles</text>
+      <text x="20" y="92" font-size="10.5" fill="#E2E8F0">3. sesiones_usuarios</text>
+      <text x="20" y="112" font-size="10.5" fill="#E2E8F0">4. categorias (margen_defecto)</text>
+      <text x="20" y="132" font-size="10.5" fill="#E2E8F0">5. productos (margen_ganancia)</text>
+      <text x="20" y="152" font-size="10.5" fill="#E2E8F0">6. lotes (FIFO por ingreso)</text>
+      <text x="20" y="172" font-size="10.5" fill="#E2E8F0">7. proveedores</text>
+      <text x="20" y="192" font-size="10.5" fill="#E2E8F0">8. compras</text>
+      <text x="20" y="212" font-size="10.5" fill="#E2E8F0">9. detalle_compras</text>
+      <text x="20" y="232" font-size="10.5" fill="#E2E8F0">10. clientes</text>
+      <text x="20" y="252" font-size="10.5" fill="#E2E8F0">11. ventas_facturas (CUFE/QR)</text>
+      <text x="20" y="272" font-size="10.5" fill="#E2E8F0">12. detalle_ventas (costo_lote)</text>
+      <text x="20" y="292" font-size="10.5" fill="#2DD4BF">13. kardex_movimientos (PEPS)</text>
+    </g>
+  </g>
+
+  <!-- Pie de Arquitectura -->
+  <rect x="60" y="625" width="930" height="35" rx="8" fill="#1E293B" stroke="#334155"/>
+  <text x="525" y="647" text-anchor="middle" font-size="11.5" font-weight="600" fill="#94A3B8">
+    Cumplimiento de Seguridad: Cero almacenamiento de secretos en frontend • Autenticación de sesiones en BD • Transacciones ACID atómicas
+  </text>
+</svg>

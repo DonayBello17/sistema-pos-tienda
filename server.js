@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const pool = require('./config/db');
 const apiRoutes = require('./routes');
+const { soloAdmin } = require('./middlewares/auth.middleware');
 
 // Controladores para endpoints de retrocompatibilidad
 const AuthController = require('./controllers/auth.controller');
@@ -19,34 +20,49 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Control de Caché estricto para evitar visualización de datos protegidos tras logout (BFCache / Botón Atrás)
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Enrutador modular centralizado (/api/...)
 app.use('/api', apiRoutes);
 
-// Endpoints de compatibilidad directa
+// Endpoints de compatibilidad directa y autenticación
 app.post('/api/login', AuthController.login);
+app.post('/api/auth/login', AuthController.login);
 app.post('/api/logout', AuthController.logout);
-app.get('/api/dashboard/metricas', DashboardController.obtenerMetricas);
+app.post('/api/auth/logout', AuthController.logout);
 
+// Dashboard y KPIs (Solo Administrador)
+app.get('/api/dashboard/metricas', soloAdmin, DashboardController.obtenerMetricas);
+
+// Catálogo y Categorías (Consulta abierta para POS; Edición Solo Administrador)
 app.get('/api/productos', ProductosController.obtenerProductos);
-app.post('/api/productos', ProductosController.crearProducto);
-app.post('/api/productos/recalcular-precios', ProductosController.recalcularPreciosMasivo);
-app.put('/api/productos/:id', ProductosController.actualizarProducto);
-app.patch('/api/productos/:id/margen', ProductosController.actualizarMargenIndividual);
-app.patch('/api/productos/:id/inactivar', ProductosController.inactivarProducto);
+app.post('/api/productos', soloAdmin, ProductosController.crearProducto);
+app.post('/api/productos/recalcular-precios', soloAdmin, ProductosController.recalcularPreciosMasivo);
+app.put('/api/productos/:id', soloAdmin, ProductosController.actualizarProducto);
+app.patch('/api/productos/:id/margen', soloAdmin, ProductosController.actualizarMargenIndividual);
+app.patch('/api/productos/:id/inactivar', soloAdmin, ProductosController.inactivarProducto);
 
 app.get('/api/categorias', ProductosController.obtenerCategorias);
-app.post('/api/categorias', ProductosController.crearCategoria);
-app.delete('/api/categorias/:id', ProductosController.eliminarCategoria);
+app.post('/api/categorias', soloAdmin, ProductosController.crearCategoria);
+app.delete('/api/categorias/:id', soloAdmin, ProductosController.eliminarCategoria);
 app.get('/api/productos/categorias', ProductosController.obtenerCategorias);
-app.post('/api/productos/categorias', ProductosController.crearCategoria);
-app.delete('/api/productos/categorias/:id', ProductosController.eliminarCategoria);
+app.post('/api/productos/categorias', soloAdmin, ProductosController.crearCategoria);
+app.delete('/api/productos/categorias/:id', soloAdmin, ProductosController.eliminarCategoria);
 
-app.get('/api/lotes', LotesController.obtenerLotes);
-app.post('/api/inventario/baja-caducidad', LotesController.registrarBaja);
-app.post('/api/inventario/novedades', LotesController.registrarNovedad);
-app.get('/api/inventario/novedades', async (req, res) => {
+// Lotes, Vencimientos y Bajas (Solo Administrador)
+app.get('/api/lotes', soloAdmin, LotesController.obtenerLotes);
+app.post('/api/inventario/baja-caducidad', soloAdmin, LotesController.registrarBaja);
+app.post('/api/inventario/novedades', soloAdmin, LotesController.registrarNovedad);
+app.get('/api/inventario/novedades', soloAdmin, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT km.id_movimiento,
@@ -78,13 +94,15 @@ app.get('/api/inventario/novedades', async (req, res) => {
   }
 });
 
-app.post('/api/compras', ComprasController.registrarCompra);
-app.get('/api/proveedores', ComprasController.obtenerProveedores);
-app.post('/api/proveedores', ComprasController.crearProveedor);
-app.get('/api/compras/proveedores', ComprasController.obtenerProveedores);
-app.post('/api/compras/proveedores', ComprasController.crearProveedor);
+// Compras y Proveedores (Solo Administrador)
+app.post('/api/compras', soloAdmin, ComprasController.registrarCompra);
+app.get('/api/proveedores', soloAdmin, ComprasController.obtenerProveedores);
+app.post('/api/proveedores', soloAdmin, ComprasController.crearProveedor);
+app.get('/api/compras/proveedores', soloAdmin, ComprasController.obtenerProveedores);
+app.post('/api/compras/proveedores', soloAdmin, ComprasController.crearProveedor);
 
-app.get('/api/ventas', VentasController.obtenerVentas);
+// Ventas y Facturación POS (Cajero y Administrador)
+app.get('/api/ventas', soloAdmin, VentasController.obtenerVentas);
 app.post('/api/ventas', VentasController.procesarVenta);
 app.get('/api/clientes', VentasController.obtenerClientes);
 app.post('/api/clientes', VentasController.crearCliente);
@@ -94,10 +112,13 @@ app.get('/api/ventas/hoy', VentasController.obtenerVentasHoy);
 app.get('/api/public/factura/:codigo', VentasController.consultarFacturaPublica);
 app.get('/api/ventas/:id', VentasController.obtenerVentaPorId);
 
-app.get('/api/reportes/gerenciales', ReportesController.obtenerReportesGerenciales);
-app.get('/api/reportes/kardex', ReportesController.obtenerKardex);
-app.get('/api/reportes/mermas', ReportesController.obtenerReporteMermas);
-app.get('/api/reportes/novedades', ReportesController.obtenerReporteMermas);
+// Reportes Gerenciales y Kardex (Solo Administrador)
+app.get('/api/reportes/gerenciales', soloAdmin, ReportesController.obtenerReportesGerenciales);
+app.get('/api/reportes/kardex', soloAdmin, ReportesController.obtenerKardex);
+app.get('/api/reportes/mermas', soloAdmin, ReportesController.obtenerReporteMermas);
+app.get('/api/reportes/novedades', soloAdmin, ReportesController.obtenerReporteMermas);
+
+// Arqueo de Caja (Accesible para Cajero y Administrador)
 app.get('/api/reportes/arqueo/:id_usuario', ReportesController.obtenerArqueoCaja);
 
 // Manejador global de errores
@@ -121,7 +142,6 @@ process.on('unhandledRejection', (reason, promise) => {
 const PORT = process.env.PORT || 3000;
 
 if (require.main === module) {
-  // Verificación inicial de conexión a la BD antes de escuchar
   pool.query('SELECT 1 + 1 AS healthcheck')
     .then(() => {
       app.listen(PORT, () => {

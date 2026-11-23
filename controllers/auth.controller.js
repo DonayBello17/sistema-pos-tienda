@@ -46,17 +46,22 @@ class AuthController {
   }
 
   static async logout(req, res) {
-    const { id_sesion } = req.body;
+    const { id_sesion, id_usuario } = req.body || {};
     try {
       if (id_sesion) {
         await pool.query(
           'UPDATE sesiones_usuarios SET fecha_fin = NOW() WHERE id_sesion = ?',
           [id_sesion]
         );
+      } else if (id_usuario) {
+        await pool.query(
+          'UPDATE sesiones_usuarios SET fecha_fin = NOW() WHERE id_usuario = ? AND fecha_fin IS NULL',
+          [id_usuario]
+        );
       }
-      res.json({ mensaje: 'Sesión cerrada exitosamente.' });
+      res.json({ ok: true, mensaje: 'Sesión cerrada exitosamente.' });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
     }
   }
 }

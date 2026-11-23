@@ -27,13 +27,13 @@ class ComprasService {
     // 2. Calcular total de la compra y validar ítems
     let totalCompra = 0;
     for (const item of productos_comprados) {
-      const cant = parseInt(item.cantidad, 10);
-      const costo = parseFloat(item.costo_unitario);
+      const cant = Number(item.cantidad);
+      const costo = Number(item.costo_unitario);
       if (isNaN(cant) || cant <= 0) {
-        throw new Error(`Cantidad inválida para producto ID ${item.id_producto}`);
+        throw new Error(`Cantidad inválida para producto ID ${item.id_producto}. Debe ser un número positivo mayor a cero.`);
       }
-      if (isNaN(costo) || costo <= 0) {
-        throw new Error(`Costo unitario inválido para producto ID ${item.id_producto}`);
+      if (isNaN(costo) || costo < 0) {
+        throw new Error(`Costo unitario inválido para producto ID ${item.id_producto}. El costo no puede ser un valor negativo.`);
       }
       if (!item.fecha_vencimiento) {
         throw new Error(`La fecha de vencimiento es obligatoria para el producto ID ${item.id_producto}`);

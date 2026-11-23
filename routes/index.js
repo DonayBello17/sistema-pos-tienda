@@ -8,6 +8,7 @@ const ventasRoutes = require('./ventas.routes');
 const lotesRoutes = require('./lotes.routes');
 const comprasRoutes = require('./compras.routes');
 const reportesRoutes = require('./reportes.routes');
+const { soloAdmin } = require('../middlewares/auth.middleware');
 
 router.use('/auth', authRoutes);
 router.use('/dashboard', dashboardRoutes);
@@ -19,6 +20,7 @@ router.use('/reportes', reportesRoutes);
 
 // Alias de retrocompatibilidad con endpoints existentes
 router.post('/login', (req, res, next) => authRoutes(req, res, next));
-router.post('/inventario/baja-caducidad', (req, res, next) => lotesRoutes(req, res, next));
+router.post('/logout', (req, res, next) => authRoutes(req, res, next));
+router.post('/inventario/baja-caducidad', soloAdmin, (req, res, next) => lotesRoutes(req, res, next));
 
 module.exports = router;

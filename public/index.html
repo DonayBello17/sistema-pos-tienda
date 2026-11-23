@@ -13,6 +13,25 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- Control de Sesión y Bloqueo Inmediato de Caché al Retroceder (BFCache) -->
+  <script>
+    (function() {
+      function validarSesionActiva() {
+        var usuario = localStorage.getItem('pos_usuario');
+        if (!usuario) {
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.replace('login.html');
+        }
+      }
+      // Verificación síncrona inmediata antes del render
+      validarSesionActiva();
+      // Listener para navegación hacia atrás/adelante en el historial del navegador
+      window.addEventListener('pageshow', function(event) {
+        validarSesionActiva();
+      });
+    })();
+  </script>
 </head>
 <body>
 

@@ -1,4 +1,48 @@
 /**
+ * Interceptor global de fetch para inyectar credenciales y roles RBAC automáticamente
+ * en todas las peticiones a la API desde el cliente.
+ */
+(function() {
+  const originalFetch = window.fetch;
+  window.fetch = async function(resource, init) {
+    init = init || {};
+    const usuarioGuardado = localStorage.getItem('pos_usuario');
+    if (usuarioGuardado) {
+      try {
+        const u = JSON.parse(usuarioGuardado);
+        if (!init.headers) {
+          init.headers = {};
+        }
+        if (init.headers instanceof Headers) {
+          if (u.rol && !init.headers.has('x-user-role')) init.headers.set('x-user-role', u.rol);
+          if (u.id_usuario && !init.headers.has('x-user-id')) init.headers.set('x-user-id', String(u.id_usuario));
+          if (u.id_sesion && !init.headers.has('x-session-id')) init.headers.set('x-session-id', String(u.id_sesion));
+        } else if (typeof init.headers === 'object') {
+          if (u.rol && !init.headers['x-user-role']) init.headers['x-user-role'] = u.rol;
+          if (u.id_usuario && !init.headers['x-user-id']) init.headers['x-user-id'] = String(u.id_usuario);
+          if (u.id_sesion && !init.headers['x-session-id']) init.headers['x-session-id'] = String(u.id_sesion);
+        }
+      } catch (e) {
+        console.warn('[Fetch Interceptor] Error al parsear usuario:', e);
+      }
+    }
+
+    const response = await originalFetch.call(this, resource, init);
+
+    // Alerta reactiva en caso de intento de acceso no autorizado
+    if (response.status === 403 && window.App && typeof window.App.toast === 'function') {
+      try {
+        const cloned = response.clone();
+        const errData = await cloned.json();
+        window.App.toast(errData.error || 'Acceso denegado: Privilegios insuficientes (403 Forbidden).', 'danger');
+      } catch (_) {}
+    }
+
+    return response;
+  };
+})();
+
+/**
  * Núcleo de la Aplicación Cliente (SPA): Estado Global, Enrutador, RBAC y Cierre de Caja
  */
 const App = {
@@ -29,8 +73,10 @@ const App = {
   cargarUsuario() {
     const usuarioGuardado = localStorage.getItem('pos_usuario');
     if (!usuarioGuardado) {
-      // Redirigir a login si no hay sesión
-      window.location.href = 'login.html';
+      // Redirigir de inmediato a login sin guardar entrada en historial
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('login.html');
       return;
     }
 
@@ -38,7 +84,9 @@ const App = {
       this.usuario = JSON.parse(usuarioGuardado);
     } catch (e) {
       console.warn('Error al parsear usuario local:', e);
-      window.location.href = 'login.html';
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace('login.html');
       return;
     }
 
@@ -90,18 +138,25 @@ const App = {
     if (!confirm('¿Desea cerrar la sesión actual?')) return;
 
     try {
-      if (this.usuario && this.usuario.id_sesion) {
-        await fetch('/api/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id_sesion: this.usuario.id_sesion })
-        });
-      }
+      const sesionId = this.usuario ? this.usuario.id_sesion : null;
+      const usuarioId = this.usuario ? this.usuario.id_usuario : null;
+
+      // Invalida la sesión formalmente en la base de datos (sesiones_usuarios)
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_sesion: sesionId, id_usuario: usuarioId })
+      });
     } catch (err) {
       console.warn('Fallo al reportar logout al servidor:', err);
     } finally {
-      localStorage.removeItem('pos_usuario');
-      window.location.href = 'login.html';
+      // Limpieza total del almacenamiento en el cliente
+      localStorage.clear();
+      sessionStorage.clear();
+      this.usuario = null;
+
+      // Redirección con reemplazo de historial para evitar retrocesos con botón "Atrás"
+      window.location.replace('login.html');
     }
   },
 

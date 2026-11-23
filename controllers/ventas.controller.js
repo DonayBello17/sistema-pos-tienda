@@ -6,6 +6,63 @@ const PepsService = require('../services/peps.service');
  */
 class VentasController {
   static async procesarVenta(req, res) {
+    const { items, descuento_porcentaje } = req.body || {};
+
+    // 1. Validar que exista el array de items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        ok: false,
+        error: 'El carrito de venta no contiene ningún producto o el formato de items es inválido.'
+      });
+    }
+
+    // 2. Validar explícitamente cada ítem (cantidades > 0 y precios/costos >= 0)
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (!it || typeof it !== 'object') {
+        return res.status(400).json({
+          ok: false,
+          error: `El ítem en la posición ${i + 1} del carrito no tiene un formato válido.`
+        });
+      }
+
+      if (!it.id_producto || isNaN(parseInt(it.id_producto, 10)) || parseInt(it.id_producto, 10) <= 0) {
+        return res.status(400).json({
+          ok: false,
+          error: `El ítem en la posición ${i + 1} debe especificar un ID de producto válido mayor a cero.`
+        });
+      }
+
+      const cantidad = Number(it.cantidad);
+      if (isNaN(cantidad) || cantidad <= 0) {
+        return res.status(400).json({
+          ok: false,
+          error: `Cantidad inválida para el producto ID ${it.id_producto}. La cantidad debe ser un número positivo mayor a cero (recibido: ${it.cantidad}).`
+        });
+      }
+
+      if (it.precio !== undefined && it.precio !== null && it.precio !== '') {
+        const precio = Number(it.precio);
+        if (isNaN(precio) || precio < 0) {
+          return res.status(400).json({
+            ok: false,
+            error: `Precio inválido para el producto ID ${it.id_producto}. El precio de venta no puede ser un valor negativo (recibido: ${it.precio}).`
+          });
+        }
+      }
+    }
+
+    // 3. Validar descuento si se especifica
+    if (descuento_porcentaje !== undefined && descuento_porcentaje !== null && descuento_porcentaje !== '') {
+      const desc = Number(descuento_porcentaje);
+      if (isNaN(desc) || desc < 0 || desc > 100) {
+        return res.status(400).json({
+          ok: false,
+          error: `Porcentaje de descuento inválido (${descuento_porcentaje}). Debe ser un número entre 0 y 100.`
+        });
+      }
+    }
+
     const conn = await pool.getConnection();
     await conn.beginTransaction();
 
